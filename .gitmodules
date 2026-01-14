@@ -1,3 +1,6 @@
-[submodule "MoeUnpack/dds-ktx"]
+﻿[submodule "MoeUnpack/dds-ktx"]
 	path = MoeUnpack/dds-ktx
 	url = https://github.com/septag/dds-ktx.git
+[submodule "libs/KTX-Software"]
+	path = libs/KTX-Software
+	url = https://github.com/KhronosGroup/KTX-Software.git
