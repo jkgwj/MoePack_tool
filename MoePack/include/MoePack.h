@@ -5,18 +5,8 @@
 #define STB_IMAGE_IMPLEMENTATION
 #define STB_IMAGE_STATIC
 #include"stb/stb_image.h"
-#include"MoeHeader.h"
+#include"../../../MoeUnpack/MoeHeader.h"
 #include"pch.h"
-
-// 自定义删除器
-template<typename T>
-struct FreeDeleter {
-	void operator()(T* ptr) const {
-		if (ptr) free(ptr); // 析构时调用 free，而非 delete
-	}
-};
-// 封装 std::unique_ptr + FreeDeleter，指向 unsigned char 类型
-using UniquePtr_uChar = std::unique_ptr<unsigned char, FreeDeleter<unsigned char>>;
 
 /**
  * @brief 辅助函数：将 MOE_ImageFormat 转换为 stb_image 识别的格式参数
@@ -76,7 +66,7 @@ public:
     *        转为KTX2 GPU压缩纹理 → (ZSTD压缩) → (XSalsa20-Poly1305加密) → 写入输出文件
     * @param in_path 输入图片文件路径（支持stb_image兼容格式：png/bmp/jpg/tga等）
     * @param out_path 输出打包文件路径（最终为加密/压缩后的KTX2二进制数据）
-    * @return std::string 成功执行返回输出文件路径；执行失败返回空字符串
+    * @return std::string 成功执行返回"SUCCESS"
     * @throw std::runtime_error 图片解码失败、KTX2转换失败、ZSTD压缩失败、加密失败、文件写入失败时抛出异常
     * @note 1. ZSTD压缩开关/等级由pack_params.ztsd_on/pack_params.ztsd_level控制；
     *       2. 加密开关/密钥由pack_params.is_encryption/pack_params.encryption_key控制；

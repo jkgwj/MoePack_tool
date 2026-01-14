@@ -414,7 +414,12 @@ std::string MoePack::pack(std::string in_path, const std::string out_path) {
     }
     else {
         in_srcdata_paths.push_back(in_path);
-        in_srcdata_names.push_back(wstringToUtf8(RemoveFileExtension(utf8ToWstring(in_path))));
+        std::string processed_path = wstringToUtf8(RemoveFileExtension(utf8ToWstring(in_path)));
+        size_t last_sep_pos = processed_path.find_last_of("\\/"); 
+        if (last_sep_pos != std::string::npos) {
+            processed_path = processed_path.substr(last_sep_pos + 1);
+        }
+        in_srcdata_names.push_back(processed_path);
     }
 
     if (log_level >= 0) cout << "共计 " << in_srcdata_paths.size() << " 个文件待处理。（正在工作中，请不要关闭程序）\n";

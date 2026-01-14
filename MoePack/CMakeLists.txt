@@ -12,6 +12,8 @@ target_link_libraries(${PROJECT_NAME}
     Vulkan::Headers
     zstd::libzstd
     ktx
+
+    MoeUnpack
 )
 
 if (CMAKE_VERSION VERSION_GREATER 3.12)

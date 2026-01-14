@@ -6,6 +6,9 @@ int main() {
     std::cout << "============ MoePack 打包工具 ============" << std::endl;
     std::cout << "输入命令 (输入 'exit' 退出,输入 -h 查看帮助):" << std::endl;
 
+    MoeUnpack::set_unpack_log_level(3);
+    MoeUnpack::unpack("D:\\project\\cpp\\MoePack\\test\\dst1\\AI_FD_e05c.moe", "D:\\project\\cpp\\MoePack\\test\\dst1","bleach");
+
     std::string input;
     while (true) {
         std::getline(std::cin, input);

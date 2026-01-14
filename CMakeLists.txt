@@ -93,3 +93,7 @@ endif()
 
 # 包含子项目。
 add_subdirectory ("MoePack")
+
+set(BUILD_MOEUNPACK ON)
+set(USE_MOEUNPACK_STATIC_LIB OFF)
+add_subdirectory ("MoeUnpack")

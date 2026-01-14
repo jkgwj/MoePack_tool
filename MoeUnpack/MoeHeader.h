@@ -1,8 +1,19 @@
 ﻿#pragma once
+#include <memory>
+#include<cassert>
 #include<cstdint>
 #include<cstring>
 #include <stdexcept>
 
+// 自定义删除器
+template<typename T>
+struct FreeDeleter {
+    void operator()(T* ptr) const {
+        if (ptr) free(ptr); // 析构时调用 free，而非 delete
+    }
+};
+// 封装 std::unique_ptr + FreeDeleter，指向 unsigned char 类型
+using UniquePtr_uChar = std::unique_ptr<unsigned char, FreeDeleter<unsigned char>>;
 
 static const char MOE_PackVersion[8] = { 'v','0','.','1','.','0','0','\0' }; // v0.1.0(0)，最后一位标识位
 
@@ -56,7 +67,7 @@ namespace MOE_Endian {
 
 struct MoeHeader//以大端模式存储
 {
-	char     magic[8]= { 'M','O','E','_','A','R','C','\0' };          // 文件 "MOE_ARC"
+	char     magic[4]= { 'M','O','E','\0'};                           // 文件 "MOE"
 	char     version[8];                                              // 文件版本号
 	uint32_t header_size= sizeof(MoeHeader);                          // 头部大小
 	uint8_t  ztsd_on=1;                                               // 是否使用 ZTSD 压缩（0 = 否，1 = 是）
@@ -66,12 +77,15 @@ struct MoeHeader//以大端模式存储
 
 	
 	MoeHeader() {
-		memcpy(version, MOE_PackVersion, 8); // 手动拷贝版本号数组
+        memcpy(magic, "MOE\0", 4);
+        memcpy(version, MOE_PackVersion, 8);
+        
 	}
 	MoeHeader(const MoeHeader& other) {
 		memcpy(this, &other, sizeof(MoeHeader));
 	}
 	MoeHeader(const uint8_t* _check_data, size_t check_size, uint64_t data_size) {
+        memcpy(magic, "MOE\0", 4);
 		memcpy(version, MOE_PackVersion, 8); 
 		ztsd_on = 1;
 		encrypted_on = 0;
@@ -104,9 +118,9 @@ struct MoeHeader//以大端模式存储
 
     // 校验"MOE_ARC"是否合法
     bool is_magic_valid() const {
-        return memcmp(magic, "MOE_ARC", 6) == 0;
+        return memcmp(magic, "MOE", 3) == 0;
     }
 };
 #pragma pack(pop)
 
-static_assert(sizeof(MoeHeader) == 94, "MoeHeader 大小错误！请检查#pragma pack和字段定义");
+static_assert(sizeof(MoeHeader) == 90, u8"MoeHeader 大小错误！请检查#pragma pack和字段定义");

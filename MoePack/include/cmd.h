@@ -1,5 +1,8 @@
 ﻿#pragma once
 #include"MoePack.h"
+#define MOE_UNPACK_IMPLEMENTATION
+#define MOE_UNPACK_CHECK_DATA
+#include"../../MoeUnpack/MoeUnpack.h"
 #include<map>
 #include<sstream>
 
