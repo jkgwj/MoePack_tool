@@ -7,14 +7,11 @@ target_link_libraries(${PROJECT_NAME}
     PUBLIC
     global_includes
     global_compile_options
-    Vulkan::Vulkan
+    PRIVATE 
+    unofficial-sodium::sodium
+    Vulkan::Headers
     zstd::libzstd
     ktx
-    unofficial-sodium::sodium
-)
-
-target_link_options(${PROJECT_NAME} PRIVATE
-    /FORCE:MULTIPLE  #ktx的zstd冲突问题，暂时不知如何解决，先强制链接
 )
 
 if (CMAKE_VERSION VERSION_GREATER 3.12)
