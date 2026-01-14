@@ -90,13 +90,13 @@ struct MoeHeader//以大端模式存储
 	void set_data_size(uint64_t size) {
 		data_size = size;
 	}
-    // 封包时调用：将多字节字段转为大端
+    // 将多字节字段转为大端
     void to_big_endian() {
         header_size = MOE_Endian::htobe32(header_size);
         data_size = MOE_Endian::htobe64(data_size);
     }
 
-    // 解包时调用：将多字节字段从大端转回主机序
+    // 将多字节字段从大端转回主机序
     void from_big_endian() {
         header_size = MOE_Endian::betoh32(header_size);
         data_size = MOE_Endian::betoh64(data_size);

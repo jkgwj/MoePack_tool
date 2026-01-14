@@ -1,6 +1,4 @@
-﻿# CMakeList.txt: 顶层 CMake 项目文件，在此处执行全局配置
-# 并包含子项目。
-#
+﻿
 cmake_minimum_required (VERSION 3.8)
 
 # 如果支持，请为 MSVC 编译器启用热重载。
@@ -49,9 +47,12 @@ set(BUILD_STATIC_LIBS ON CACHE BOOL "Build shared library" FORCE)
 
 #压缩
 find_package(zstd CONFIG REQUIRED)
+message(STATUS "zstd 是否找到: ${zstd_FOUND}")          # 成功则为TRUE/1
+
 
 #sodium(加密)
 find_package(unofficial-sodium CONFIG REQUIRED)
+message(STATUS "sodium 是否找到: ${unofficial-sodium_FOUND}") 
 
 add_definitions(-DKHRONOS_STATIC)
 set(KTX_FEATURE_BASIS_COMPRESSION ON CACHE BOOL "启用 Basis 压缩模块" FORCE)

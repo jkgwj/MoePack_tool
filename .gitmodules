@@ -1,0 +1,3 @@
+[submodule "MoeUnpack/dds-ktx"]
+	path = MoeUnpack/dds-ktx
+	url = https://github.com/septag/dds-ktx.git
