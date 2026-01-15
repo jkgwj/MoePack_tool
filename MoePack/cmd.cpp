@@ -22,6 +22,7 @@ int main() {
         std::vector<std::string> args = split_command(input);
         if (!args.empty() && ((args[0] == "Pack" || args[0] == "pack") || (args[0] == "Unpack" || args[0] == "unpack"))) {
 			if ((args[0] == "Unpack" || args[0] == "unpack"))is_pack_command = 0;
+			else is_pack_command = 1;
             args.erase(args.begin());
         }
         if (args.empty()) {
