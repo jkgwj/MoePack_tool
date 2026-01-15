@@ -168,9 +168,6 @@ UniquePtr_uChar MoePack::_src_format_to_ktx(const unsigned char* src_data, int& 
         throw std::runtime_error(err_msg);
     }
     
-    // 设置目标 GPU 格式（压缩完成后）
-	ktx2_texture->vkFormat = target_format;
-    
     if (log_level >= 2) {
         std::cout << "GPU 纹理压缩完成" << std::endl;
     }
@@ -868,9 +865,30 @@ ktxResult MoePack::_compress_ktx_with_basis(ktxTexture2* texture, VkFormat targe
         }
         return result;
     }
-
     if (log_level >= 2) {
         std::cout << "Basis Universal 压缩成功完成" << std::endl;
+    }
+    //执行Basis转码到目标GPU格式 
+    if(log_level>=3){
+        std::cout << "Basis压缩后信息:" << std::endl;
+        std::cout << "  原始vkFormat: 0x" << std::hex << texture->vkFormat << std::dec
+            << " (应在此刻检查是否为UNDEFINED)" << std::endl;
+        std::cout << "  超级压缩方案: " << texture->supercompressionScheme << std::endl;
+    }
+    if (log_level >= 2) {
+        std::cout << "开始将Basis格式转码为目标GPU格式 (0x" << std::hex << target_format << std::dec << ")..." << std::endl;
+    }
+    ktxResult ktx_ret = ktxTexture2_TranscodeBasis(texture, VkFormatToKtxTranscodeFmt(target_format), 0);
+    if (ktx_ret != KTX_SUCCESS) {
+        std::string err_msg = "转换 KTX 失败：Basis转码失败 | 错误码："
+            + std::string(ktxErrorString(ktx_ret))
+            + " | 目标格式：0x" + std::to_string((int)target_format);
+        ktxTexture2_Destroy(texture);
+        throw std::runtime_error(err_msg);
+    }
+    if (log_level >= 2) {
+        std::cout << "Basis转码成功完成。" << std::endl;
+        std::cout << "  转码后vkFormat: 0x" << std::hex << texture->vkFormat << std::dec << std::endl;
     }
 
     return KTX_SUCCESS;

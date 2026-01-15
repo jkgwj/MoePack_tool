@@ -9,7 +9,7 @@ target_link_libraries(MoeUnpack
         global_compile_options
 )
 
-set(MOE_UNPACK_DEBUG 1)
+option(MOE_UNPACK_DEBUG ON)
 if(MOE_UNPACK_DEBUG)
     target_compile_definitions(MoeUnpack PRIVATE ktx)
 endif()

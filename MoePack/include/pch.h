@@ -72,6 +72,36 @@ static inline VkFormat GetGpuCompressionFormat(MOE_Platform platform)
         return VK_FORMAT_ETC2_R8G8B8A8_UNORM_BLOCK;
     }
 }
+/**
+ * @brief 将 Vulkan 压缩格式（VkFormat）转换为 KTX 转码格式（ktx_transcode_fmt_e）
+ * @param vkFmt Vulkan 格式枚举（来自 GetGpuCompressionFormat 的返回值）
+ * @return 匹配的 KTX 转码格式，默认返回 KTX_TTF_NOSELECTION
+ */
+static inline ktx_transcode_fmt_e VkFormatToKtxTranscodeFmt(VkFormat vkFmt)
+{
+    switch (vkFmt)
+    {
+        // Windows：BC7 → KTX_TTF_BC7_RGBA
+    case VK_FORMAT_BC7_UNORM_BLOCK:
+        return KTX_TTF_BC7_RGBA;
+
+        // Linux/Android：ETC2 RGBA8 → KTX_TTF_ETC2_RGBA
+    case VK_FORMAT_ETC2_R8G8B8A8_UNORM_BLOCK:
+        return KTX_TTF_ETC2_RGBA; 
+
+
+    // macOS：ASTC 8x8 → KTX_TTF_ASTC_4x4_RGBA
+    case VK_FORMAT_ASTC_8x8_UNORM_BLOCK:
+        return KTX_TTF_ASTC_4x4_RGBA;
+
+        // iOS：ASTC 6x6 → KTX_TTF_ASTC_4x4_RGBA
+    case VK_FORMAT_ASTC_6x6_UNORM_BLOCK:
+        return KTX_TTF_ASTC_4x4_RGBA;
+
+    default:
+        return KTX_TTF_NOSELECTION;
+    }
+}
 
 //路径预处理辅助函数
 using namespace std;
