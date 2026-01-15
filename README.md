@@ -40,7 +40,7 @@ MoePack和MoeUnpack是相互独立的项目。
 MoeUnpack是一个头文件库，只需要包含MoeUnpack.h和使用#define MOE_UNPACK_IMPLEMENTATION 即可。（前提是确保你的环境内已配置ztsd,ktx2,sodium）
 如果你不需要检查ktx2容器的完整性，cmake使用MOE_UNPACK_DEBUG=OFF。
 当然，直接使用头文件的话，不要设置设置MOE_UNPACK_NO_KTX2_CHECK宏。
-简单示例如下：
+- 简单示例如下：
 ```cpp
 #define MOE_UNPACK_IMPLEMENTATION
 #include "MoeUnpack.h"
