@@ -25,16 +25,18 @@ const map<int, string> g_help_info = {
     {0, R"(
 MoePack 打包工具 - 中文帮助
 ============================
-用法: Pack [参数]
+用法:
+ pack [参数]
+ unpack [参数]
 
 必要参数:
-  -i / -in_put / -in       输入路径（待打包的文件/目录路径）
-  -p / -platform           目标平台（支持：WINDOWS/LINUX/MACOS/IOS/ANDROID，大小写不敏感）
+  -i / -in_put / -in       输入路径（待打包的文件/目录路径/需要解包的文件）
+  -p / -platform           目标平台（支持：WINDOWS/LINUX/MACOS/IOS/ANDROID，大小写不敏感）注意：unpack命令不需要此参数
 
 可选参数:
   -o / -out_put / -out     输出路径（默认：当前工作目录）
   -z / -ztsd_level / -zl   ZTSD压缩等级（默认：15，启用压缩）
-  -k / -key                加密密钥（无此参数则禁用加密）
+  -k / -key                加密密钥（无此参数则禁用加密,解包时如果有加密请指定）
   -l / -log_level          日志等级（默认：1，等级越高输出越详细）
 
 帮助参数:
@@ -42,31 +44,33 @@ MoePack 打包工具 - 中文帮助
   -h/-help -en/-english    显示英文帮助信息
 
 示例:
-  Pack -i D:\src -p WINDOWS -o D:\dst -z 17 -k bleach -l 3
-  Pack -in ./src -platform LINUX -zl 12 -key 123456
+  pack -i D:\src -p WINDOWS -o D:\dst -z 17 -k you_key -l 3
+  unpack -i D:\src\data.moe -o D:\dst -k you_key -l 3
 )"},
     {1, R"(
 MoePack Pack Tool - English Help
-===============================
-Usage: Pack [Options]
+=================================
+Usage:
+ pack [options]
+ unpack [options]
 
 Required Options:
-  -i / -in_put / -in       Input path (file/directory to be packed)
-  -p / -platform           Target platform (Supported: WINDOWS/LINUX/MACOS/IOS/ANDROID, case-insensitive)
+  -i / -in_put / -in       Input path (file/directory to be packed / file to be unpacked)
+  -p / -platform           Target platform (Supported: WINDOWS/LINUX/MACOS/IOS/ANDROID, case-insensitive) Note: This option is not required for the unpack command
 
 Optional Options:
   -o / -out_put / -out     Output path (Default: Current working directory)
   -z / -ztsd_level / -zl   ZTSD compression level (Default: 15, compression enabled)
-  -k / -key                Encryption key (No this option means encryption disabled)
-  -l / -log_level          Log level (Default: 1, higher level for more details)
+  -k / -key                Encryption key (No this option means encryption disabled, please specify it if encrypted when unpacking)
+  -l / -log_level          Log level (Default: 1, higher level for more detailed output)
 
 Help Options:
   -h / -help               Show Chinese help information
   -h/-help -en/-english    Show English help information
 
 Examples:
-  Pack -i D:\src -p WINDOWS -o D:\dst -z 17 -k bleach -l 3
-  Pack -in ./src -platform LINUX -zl 12 -key 123456
+  pack -i D:\src -p WINDOWS -o D:\dst -z 17 -k you_key -l 3
+  unpack -i D:\src\data.moe -o D:\dst -k you_key -l 3
 )"}
 };
 

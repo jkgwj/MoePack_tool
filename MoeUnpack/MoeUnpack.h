@@ -307,7 +307,7 @@ void MoeUnpack::unpack_moe_header(unsigned char* data, MoeHeader& head_data) {
     }
 }
 
-std::string MoeUnpack::unpack(std::string in_put, std::string out_put,std::string _key) {
+std::string MoeUnpack::unpack(std::string in_put, std::string out_put,std::string _key="") {
     MoeHeader moe_header;
     namespace fs = std::filesystem;
 

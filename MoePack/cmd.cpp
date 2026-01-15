@@ -1,13 +1,14 @@
 ﻿#include"cmd.h"
+//-1没有对应的命令输入
+//0 解包命令
+//1 封包命令
+int is_pack_command = true;
 
 int main() {
 	SetConsoleOutputCP(65001); // 设置控制台编码为UTF-8
 	SetConsoleCP(65001);
     std::cout << "============ MoePack 打包工具 ============" << std::endl;
     std::cout << "输入命令 (输入 'exit' 退出,输入 -h 查看帮助):" << std::endl;
-
-    MoeUnpack::set_unpack_log_level(3);
-    MoeUnpack::unpack("D:\\project\\cpp\\MoePack\\test\\dst1\\AI_FD_e05c.moe", "D:\\project\\cpp\\MoePack\\test\\dst1","bleach");
 
     std::string input;
     while (true) {
@@ -19,7 +20,7 @@ int main() {
             continue;
         }
         std::vector<std::string> args = split_command(input);
-        if (!args.empty() && (args[0] == "Pack" || args[0] == "pack")) {
+        if (!args.empty() && ((args[0] == "Pack" || args[0] == "pack") || (args[0] == "Unpack" || args[0] == "unpack"))) {
             args.erase(args.begin());
         }
         if (args.empty()) {
@@ -122,8 +123,12 @@ void cmd(const std::vector<std::string>& args) {
     MoePack packer;
     packer.set_dst_platform(ctx.platform);
     packer.set_log_level(ctx.log_level);
+    MoeUnpack::set_unpack_log_level(ctx.log_level);
     packer.ztsd_compression(ctx.compression_level > 0, ctx.compression_level);
     packer.encryption(!ctx.encryption_key.empty(), ctx.encryption_key);
 
-    if(!has_error)cout<< packer.pack(ctx.input_path, ctx.output_path);
+    if (!has_error) { 
+       if(is_pack_command==1) cout << packer.pack(ctx.input_path, ctx.output_path); 
+       if(is_pack_command==0) cout << MoeUnpack::unpack(ctx.input_path, ctx.output_path,ctx.encryption_key); 
+    }
 }

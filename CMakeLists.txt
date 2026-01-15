@@ -94,6 +94,11 @@ endif()
 # 包含子项目。
 add_subdirectory ("MoePack")
 
-set(BUILD_MOEUNPACK ON)
-set(USE_MOEUNPACK_STATIC_LIB OFF)
+if(BUILD_MOEUNPACK)
+    message(STATUS "MoeUnpack 模块已启用")
+    set(BUILD_MOEUNPACK ON)
+    set(USE_MOEUNPACK_STATIC_LIB OFF)
 add_subdirectory ("MoeUnpack")
+else()
+    message(STATUS "MoeUnpack 模块未启用")
+endif()
