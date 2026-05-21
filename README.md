@@ -1,4 +1,4 @@
-# MoePack_tool
+﻿# MoePack_tool
 这是一个用于封包游戏资源的工具，它还带有一个轻量的解包工具
 它可以把图片资源封包成对应目标平台的gpu压缩格式（使用ktx2容器），从而平衡游戏资源体积与加载速度。
 对于非图片资源（MP3/FLAC/OGG等音频文件、或其他二进制文件），提供 pack_ex / unpack_ex 进行加密封包。
@@ -31,7 +31,7 @@
 - [basisu](https://github.com/BinomialLLC/basis_universal)
 
 解包工具依赖以下开源库：
-- [ktx2](https://github.com/KhronosGroup/KTX-Software)（仅在 MOE_UNPACK_CHECK_DATA 时需要）
+- [ktx2](https://github.com/KhronosGroup/KTX-Software)
 - [sodium](https://github.com/jedisct1/libsodium)
 - [ztsd](https://github.com/facebook/zstd)
 
