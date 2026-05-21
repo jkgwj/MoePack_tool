@@ -19,7 +19,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include"stb/stb_image.h"
+#include"stb_image.h"
 #include"../../../MoeUnpack/MoeHeader.h"
 #include"pch.h"
 
@@ -89,6 +89,20 @@ public:
     *       4. KTX2纹理格式由pack_params.texture_format指定，需匹配目标平台(dst_platform)
     */
 	std::string pack( std::string in_path,const std::string out_path);
+
+	/**
+	* @brief 非图片资源封包函数：直接对原始文件进行加密/压缩并添加MOE文件头
+	*        核心流程：读取原始文件 → (ZSTD压缩) → (加密) → 添加文件头 → 写入.moe
+	*        与 pack() 的区别：不做图像解码和KTX2纹理转换，适用于MP3/FLAC/OGG等任意二进制文件
+	* @param in_path 输入文件路径（支持任意二进制文件，也支持文件夹批量处理）
+	* @param out_path 输出打包文件路径
+	* @return std::string 成功执行返回"SUCCESS"
+	* @throw std::runtime_error 文件读取/ZSTD压缩/加密/写入失败时抛出异常
+	* @note 1. ZSTD压缩开关/等级由pack_params.ztsd_on/pack_params.ztsd_level控制；
+	*       2. 加密开关/密钥由pack_params.is_encryption/pack_params.encryption_key控制；
+	*       3. 输出文件扩展名为 .moe
+	*/
+	std::string pack_ex(std::string in_path, std::string out_path);
 
 
 

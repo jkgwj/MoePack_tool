@@ -1,5 +1,4 @@
-﻿
-cmake_minimum_required (VERSION 3.8)
+﻿cmake_minimum_required (VERSION 3.8)
 
 # 如果支持，请为 MSVC 编译器启用热重载。
 if (POLICY CMP0141)
@@ -19,6 +18,10 @@ project (${PROJECT_NAME}
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+
+# ========== MoePack 编译选项 ==========
+option(MOE_BUILD_STATIC "构建为静态库（默认ON），OFF则构建动态库" ON)
+option(MOE_BUILD_PACK "是否编译封包库和封包工具（默认OFF，仅编译解包库）" OFF)
 
 
 # 设置输出目录
@@ -42,9 +45,6 @@ else()
     message(FATAL_ERROR "Vulkan库未找到，请检查是否已通过vcpkg安装（vcpkg install vulkan）或Vulkan SDK是否正确配置")
 endif()
 
-set(BUILD_SHARED_LIBS OFF CACHE BOOL "Build shared library" FORCE)
-set(BUILD_STATIC_LIBS ON CACHE BOOL "Build shared library" FORCE)
-
 #压缩
 find_package(zstd CONFIG REQUIRED)
 message(STATUS "zstd 是否找到: ${zstd_FOUND}")          # 成功则为TRUE/1
@@ -52,7 +52,7 @@ message(STATUS "zstd 是否找到: ${zstd_FOUND}")          # 成功则为TRUE/1
 
 #sodium(加密)
 find_package(unofficial-sodium CONFIG REQUIRED)
-message(STATUS "sodium 是否找到: ${unofficial-sodium_FOUND}") 
+message(STATUS "sodium 是否找到: ${unofficial-sodium_FOUND}")
 
 add_definitions(-DKHRONOS_STATIC)
 set(KTX_FEATURE_BASIS_COMPRESSION ON CACHE BOOL "启用 Basis 压缩模块" FORCE)
@@ -64,41 +64,42 @@ add_subdirectory(libs/KTX-Software EXCLUDE_FROM_ALL)
 
 
 # 设置头文件目录
-add_library(global_includes INTERFACE)
-target_include_directories(global_includes INTERFACE 
+add_library(moe_pack_includes INTERFACE)
+target_include_directories(moe_pack_includes INTERFACE
  "MoePack/include"
+ "libs/stb"
 )
 
 # 全局编译选项
-add_library(global_compile_options INTERFACE)
+add_library(moe_pack_compile_options INTERFACE)
 if(MSVC)
-     target_compile_options(global_compile_options INTERFACE
+     target_compile_options(moe_pack_compile_options INTERFACE
         /utf-8
         /D_UNICODE
         /DUNICODE
         /MP  # 多处理器编译
-        
+
     )
 else()
-    target_compile_options(global_compile_options INTERFACE
+    target_compile_options(moe_pack_compile_options INTERFACE
         -finput-charset=UTF-8
         -fexec-charset=UTF-8
     )
-    target_compile_definitions(global_compile_options INTERFACE
+    target_compile_definitions(moe_pack_compile_options INTERFACE
         _LARGEFILE64_SOURCE
         _FILE_OFFSET_BITS=64
     )
-  
+
 endif()
 
-# 包含子项目。
-add_subdirectory ("MoePack")
-set(BUILD_MOEUNPACK 1)
-if(BUILD_MOEUNPACK)
-    message(STATUS "MoeUnpack 模块已启用")
-    set(BUILD_MOEUNPACK ON)
-    set(USE_MOEUNPACK_STATIC_LIB OFF)
+# 解包库（默认编译）
+message(STATUS "MoeUnpack 模块已启用")
 add_subdirectory ("MoeUnpack")
+
+# 封包库和封包工具（仅在 MOE_BUILD_PACK=ON 时编译）
+if(MOE_BUILD_PACK)
+    message(STATUS "MoePack 模块已启用")
+    add_subdirectory ("MoePack")
 else()
-    message(STATUS "MoeUnpack 模块未启用")
+    message(STATUS "MoePack 模块未启用（使用 -DMOE_BUILD_PACK=ON 开启）")
 endif()

@@ -21,6 +21,7 @@
 #include <iostream>
 #include <string>
 #include <vector>
+#include <fstream>
 #include <utility>
 
 #ifdef max

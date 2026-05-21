@@ -908,3 +908,207 @@ ktxResult MoePack::_compress_ktx_with_basis(ktxTexture2* texture, VkFormat targe
 
     return KTX_SUCCESS;
 }
+
+std::string MoePack::pack_ex(std::string in_path, std::string out_path) {
+    vector<std::string> in_srcdata_paths; // 输入的文件路径列表
+    vector<std::string> in_srcdata_names; // 输入的文件名列表(保存时用)
+    std::wstring out_file_path; // 输出文件夹路径(宽字符)
+
+    // 确定输出目录路径
+    if (!is_directory_path(out_path, 1)) {
+        out_file_path = GetParentDirFromPath(out_path);
+    }
+    else {
+        out_file_path = utf8ToWstring(out_path);
+    }
+
+    // 检测输入是否是文件夹路径
+    if (is_directory_path(in_path)) {
+        GetFileDirEx_NoExtension(in_path, in_srcdata_paths, in_srcdata_names);
+        if (log_level >= 2) cout << "检测到输入路径为文件夹，自动获取文件\n";
+    }
+    else {
+        in_srcdata_paths.push_back(in_path);
+        std::string processed_path = wstringToUtf8(RemoveFileExtension(utf8ToWstring(in_path)));
+        size_t last_sep_pos = processed_path.find_last_of("\/");
+        if (last_sep_pos != std::string::npos) {
+            processed_path = processed_path.substr(last_sep_pos + 1);
+        }
+        in_srcdata_names.push_back(processed_path);
+    }
+
+    if (log_level >= 0) cout << "共计 " << in_srcdata_paths.size() << " 个文件待处理。（正在工作中，请不要关闭程序）\n";
+
+    // 检查输出目录是否存在，不存在则创建
+    if (!fs::exists(wstringToUtf8(out_file_path))) {
+        if (!fs::create_directories(wstringToUtf8(out_file_path))) {
+            throw std::runtime_error("创建输出目录失败：" + wstringToUtf8(out_file_path));
+        }
+        if (log_level >= 2) cout << "已创建输出目录：" << wstringToUtf8(out_file_path) << endl;
+    }
+
+    // 开始封包处理
+    for (size_t i = 0; i < in_srcdata_paths.size(); ++i) {
+        std::string path = in_srcdata_paths[i]; // 当前处理的文件路径
+        int size = 0; // 当前数据大小，会在每个处理步骤中更新
+        UniquePtr_uChar out_data; // 当前处理的数据指针
+
+        if (path.empty()) {
+            cout << "警告：路径为空，跳过处理。\n";
+            continue;
+        }
+
+        // 检查输入文件是否存在
+        if (!fs::exists(path)) {
+            cout << "警告：文件不存在，跳过处理：" << path << endl;
+            continue;
+        }
+
+        try {
+            // 读取原始文件数据
+            if (log_level >= 1) {
+                cout << "[" << (i + 1) << "/" << in_srcdata_paths.size() << "] 开始读取文件: "
+                    << fs::path(path).filename().string() << " (请耐心等待)";
+                std::flush(cout);
+            }
+            size_t file_size_val = fs::file_size(path);
+            if (file_size_val == 0) {
+                cout << "  警告：文件大小为0，跳过处理：" << path << endl;
+                continue;
+            }
+            unsigned char* raw_file_data = static_cast<unsigned char*>(malloc(file_size_val));
+            if (!raw_file_data) {
+                throw std::runtime_error("读取文件失败：内存分配失败 - " + path);
+            }
+            std::ifstream file(path, std::ios::binary);
+            if (!file.read(reinterpret_cast<char*>(raw_file_data), file_size_val)) {
+                free(raw_file_data);
+                throw std::runtime_error("读取文件失败：无法读取文件 - " + path);
+            }
+            file.close();
+            out_data = UniquePtr_uChar(raw_file_data);
+            size = static_cast<int>(file_size_val);
+            if (log_level >= 1) {
+                cout << "-> 读取成功 [" << size << "字节]" << endl;
+            }
+
+            // ZSTD压缩（如果启用）
+            if (pack_params.ztsd_on) {
+                if (log_level >= 1) {
+                    cout << "     开始ZSTD压缩(请耐心等待)";
+                    std::flush(cout);
+                }
+                out_data = _ztsd_compression(out_data.get(), size);
+                if (log_level >= 1) {
+                    cout << "-> 压缩成功 [" << size << "字节]" << endl;
+                }
+            }
+
+            // 加密（如果启用）
+            if (pack_params.is_encryption) {
+                if (log_level >= 1) {
+                    cout << "     开始加密数据(请耐心等待)";
+                    std::flush(cout);
+                }
+                out_data = _encrypt(out_data.get(), size, pack_params.encryption_key);
+                if (log_level >= 1) {
+                    cout << "-> 加密成功 [" << size << "字节]" << endl;
+                }
+            }
+
+            // 创建 MoeHeader 文件头
+            MoeHeader moe_header;
+
+            // 设置 MoeHeader 参数
+            moe_header.ztsd_on = pack_params.ztsd_on ? 1 : 0;
+            moe_header.encrypted_on = pack_params.is_encryption ? 1 : 0;
+            moe_header.set_data_size(static_cast<uint64_t>(size));
+
+            // 计算校验数据（使用SHA256哈希）
+            if (size > 0 && out_data.get()) {
+                unsigned char hash[crypto_hash_sha256_BYTES];
+                crypto_hash_sha256(hash, out_data.get(), size);
+                moe_header.set_check_data(hash, crypto_hash_sha256_BYTES);
+            }
+
+            // 将头部字段转为大端字节序
+            moe_header.to_big_endian();
+
+            // 准备输出文件路径
+            std::wstring out_file_full_path = out_file_path + L"/" +
+                utf8ToWstring(in_srcdata_names[i]) + L".moe";
+
+            if (fs::exists(wstringToUtf8(out_file_full_path))) {
+                if (log_level >= 2) {
+                    cout << "     注意：输出文件已存在，将覆盖" << endl;
+                }
+            }
+
+            if (log_level >= 1) {
+                cout << "     开始写入输出文件：" << in_srcdata_names[i] << ".moe (请耐心等待)";
+                std::flush(cout);
+            }
+            bool write_success = write_data_to_dir(
+                out_file_full_path,
+                out_data.get(),
+                static_cast<size_t>(size),
+                &moe_header
+            );
+
+            if (!write_success) {
+                throw std::runtime_error("写入文件失败：" + wstringToUtf8(out_file_full_path));
+            }
+
+            if (log_level >= 1) {
+                cout << "-> 写入成功" << endl;
+            }
+
+            // 记录处理结果
+            if (log_level >= 1) {
+                int64_t packed_data_size = fs::file_size(wstringToUtf8(out_file_full_path));
+
+                cout << "->封包完成：" << endl;
+                cout << "    输出文件: " << in_srcdata_names[i] << ".moe" << endl;
+                cout << "    输出大小: " << packed_data_size << " 字节" << endl;
+                cout << "    头部大小: " << sizeof(MoeHeader) << " 字节" << endl;
+                cout << "    数据大小: " << size << " 字节" << endl;
+
+                if (log_level >= 3) {
+                    cout << "    处理步骤: 读取文件";
+                    if (pack_params.ztsd_on) cout << "→ZSTD压缩";
+                    if (pack_params.is_encryption) cout << "→加密";
+                    cout << "→写入文件" << endl;
+                }
+            }
+
+            out_data.reset();
+        }
+        catch (const std::exception& e) {
+            cerr << "错误：处理文件 " << path << " 时发生异常：" << e.what() << endl;
+            if (log_level >= 1) {
+                cout << "  文件 " << fs::path(path).filename().string() << " 处理失败，已跳过" << endl;
+            }
+            continue;
+        }
+
+        if (log_level >= 1) {
+            cout << "----------------------------------------" << endl;
+            cout << "已完成 " << (i + 1) << " / " << in_srcdata_paths.size()
+                << " 个文件的封包。" << endl;
+            cout << "----------------------------------------" << endl;
+        }
+    }
+
+    if (log_level >= 0) {
+        if (in_srcdata_paths.size() > 0) {
+            cout << endl << " 已完成所有文件的封包处理。" << endl;
+            cout << "  总计处理: " << in_srcdata_paths.size() << " 个文件" << endl;
+            cout << "  输出目录: " << wstringToUtf8(out_file_path) << endl;
+        }
+        else {
+            cout << "警告：没有找到可处理的文件。" << endl;
+        }
+    }
+
+    return "SUCCESS";
+}

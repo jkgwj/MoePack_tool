@@ -1,12 +1,16 @@
-﻿# 将源代码添加到此项目的可执行文件。
-add_library (MoeUnpack "MoeUnpack.cpp" )
+﻿# 解包库（默认静态库，通过 MOE_BUILD_STATIC 控制）
+if(MOE_BUILD_STATIC)
+    add_library (MoeUnpack STATIC "MoeUnpack.cpp" )
+else()
+    add_library (MoeUnpack SHARED "MoeUnpack.cpp" )
+endif()
 
 target_link_libraries(MoeUnpack
     PRIVATE
      zstd::libzstd
      unofficial-sodium::sodium
-    PUBLIC      
-        global_compile_options
+    PUBLIC
+        moe_pack_compile_options
 )
 
 option(MOE_UNPACK_DEBUG ON)
