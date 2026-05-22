@@ -930,7 +930,7 @@ std::string MoePack::pack_ex(std::string in_path, std::string out_path) {
     else {
         in_srcdata_paths.push_back(in_path);
         std::string processed_path = wstringToUtf8(RemoveFileExtension(utf8ToWstring(in_path)));
-        size_t last_sep_pos = processed_path.find_last_of("\/");
+        size_t last_sep_pos = processed_path.find_last_of("\\/");
         if (last_sep_pos != std::string::npos) {
             processed_path = processed_path.substr(last_sep_pos + 1);
         }
