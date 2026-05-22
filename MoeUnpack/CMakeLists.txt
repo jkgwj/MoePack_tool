@@ -10,10 +10,15 @@ target_link_libraries(MoeUnpack
      zstd::libzstd
      unofficial-sodium::sodium
     PUBLIC
-        moe_pack_compile_options
+     moe_pack_compile_options
 )
 
 option(MOE_UNPACK_DEBUG ON)
 if(MOE_UNPACK_DEBUG)
-    target_compile_definitions(MoeUnpack PRIVATE ktx)
+    target_compile_definitions(MoeUnpack 
+    PRIVATE 
+    ktx
+    zstd
+    unofficial-sodium
+    )
 endif()
