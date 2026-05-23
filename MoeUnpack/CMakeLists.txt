@@ -7,10 +7,11 @@ endif()
 
 target_link_libraries(MoeUnpack
     PRIVATE
-     zstd::libzstd
-     unofficial-sodium::sodium
+     
     PUBLIC
      moe_pack_compile_options
+     zstd::libzstd
+     unofficial-sodium::sodium
 )
 
 option(MOE_UNPACK_DEBUG ON)
