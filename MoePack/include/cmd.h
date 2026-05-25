@@ -32,7 +32,7 @@ inline MOE_Platform ParsePlatform(const std::string& plat_str) {
     if (lower_plat == "ios") return MOE_Platform::IOS;
     if (lower_plat == "android") return MOE_Platform::ANDROID;
 
-	return NOP; //没有对应平台支持或者你的输入有误
+		return NOP; //没有对应平台支持或者你的输入有误
 }
 
 // 全局帮助信息存储（0=中，1=英）
@@ -42,18 +42,23 @@ MoePack 打包工具 - 中文帮助
 ============================
 
 【命令说明】
-  pack      - 图片资源封包：解码图片→KTX2 GPU纹理压缩→ZSTD压缩(可选)→加密(可选)
-              适用场景：纹理/贴图等图像资源，会根据目标平台自动选择最优GPU压缩格式
-              需要 -p 指定目标平台
-  pack_ex   - 非图片资源封包：直接读取原始文件→ZSTD压缩(可选)→加密(可选)
-              适用场景：音频(MP3/FLAC/OGG)、视频、文本等任意二进制文件
-              不进行任何解码/转码，只做压缩+加密+添加MOE文件头
-              无需 -p 参数
-  unpack    - 图片资源解包：解密(可选)→解压(可选)→KTX2格式验证→输出.ktx2文件
-              适用场景：解包由 pack 命令生成的 .moe 文件
-  unpack_ex - 非图片资源解包：解密(可选)→解压(可选)→输出原始文件(无扩展名)
-              适用场景：解包由 pack_ex 命令生成的 .moe 文件
-              不进行KTX2验证，直接还原原始二进制数据
+  pack            - 图片资源封包：解码图片→KTX2 GPU纹理压缩→ZSTD压缩(可选)→加密(可选)
+                    适用场景：纹理/贴图等图像资源，会根据目标平台自动选择最优GPU压缩格式
+                    需要 -p 指定目标平台
+  pack_ex         - 非图片资源封包：直接读取原始文件→ZSTD压缩(可选)→加密(可选)
+                    适用场景：音频(MP3/FLAC/OGG)、视频、文本等任意二进制文件
+                    不进行任何解码/转码，只做压缩+加密+添加MOE文件头
+                    无需 -p 参数
+  pack_ex_stream  - 流式加密封包：读取原始文件→分块加密(无压缩)→输出v0.2.00格式.moe
+                    适用场景：需要流式播放的大音频文件
+                    自动检测音频格式(WAV/FLAC/MP3/VORBIS)写入文件头
+                    使用 -s 指定自定义块大小(默认64KB)
+                    无需 -p、-z 参数(不支持压缩)
+  unpack          - 图片资源解包：解密(可选)→解压(可选)→KTX2格式验证→输出.ktx2文件
+                    适用场景：解包由 pack 命令生成的 .moe 文件
+  unpack_ex       - 非图片资源解包：解密(可选)→解压(可选)→输出原始文件(无扩展名)
+                    适用场景：解包由 pack_ex 命令生成的 .moe 文件
+                    不进行KTX2验证，直接还原原始二进制数据
 
 【参数说明】
   -i / -in_put / -in       输入路径（待打包的文件/目录路径，或需要解包的.moe文件）
@@ -63,34 +68,41 @@ MoePack 打包工具 - 中文帮助
   -z / -ztsd_level / -zl   ZSTD压缩等级（pack默认15；pack_ex默认0即不压缩，设为非0值启用压缩）
   -k / -key                加密密钥（不提供则禁用加密，解包时如有加密必须指定）
   -l / -log_level          日志等级（0=简洁 / 1=正常 / 2=详细 / 3=调试）
+  -s / -stream             流式加密块大小(字节)，仅 pack_ex_stream 使用（默认65536即64KB）
 
 【帮助参数】
   -h / -help               显示中文帮助
   -h/-help -en/-english    显示英文帮助
 
 【示例】
-  pack      -i D:\textures -p WINDOWS -o D:\output -z 17 -k mykey -l 2
-  pack_ex   -i D:\audio\bgm.mp3 -o D:\output -k mykey
-  unpack    -i D:\output\texture.moe -o D:\unpacked -k mykey
-  unpack_ex -i D:\output\bgm.moe -o D:\unpacked -k mykey
+  pack            -i D:\textures -p WINDOWS -o D:\output -z 17 -k mykey -l 2
+  pack_ex         -i D:\audio\bgm.mp3 -o D:\output -k mykey
+  pack_ex_stream  -i D:\audio\bgm.mp3 -o D:\output -k mykey -s 131072
+  unpack          -i D:\output\texture.moe -o D:\unpacked -k mykey
+  unpack_ex       -i D:\output\bgm.moe -o D:\unpacked -k mykey
 )"},
     {1, R"(
 MoePack Pack Tool - English Help
 =================================
 
 [Command Overview]
-  pack      - Image resource packing: decode→KTX2 GPU compression→ZSTD(opt)→encrypt(opt)
-              Use case: textures/sprites, auto-selects optimal GPU format per platform
-              Requires -p for target platform
-  pack_ex   - Generic resource packing: raw file→ZSTD(opt)→encrypt(opt)
-              Use case: audio(MP3/FLAC/OGG), video, text, any binary files
-              NO decoding/transcoding, only compression+encryption+MOE header
-              No -p required
-  unpack    - Image resource unpacking: decrypt(opt)→decompress(opt)→KTX2 validate→.ktx2
-              Use case: unpack .moe files created by the pack command
-  unpack_ex - Generic resource unpacking: decrypt(opt)→decompress(opt)→raw file (no ext)
-              Use case: unpack .moe files created by the pack_ex command
-              No KTX2 validation, restores original binary data directly
+  pack            - Image resource packing: decode→KTX2 GPU compression→ZSTD(opt)→encrypt(opt)
+                    Use case: textures/sprites, auto-selects optimal GPU format per platform
+                    Requires -p for target platform
+  pack_ex         - Generic resource packing: raw file→ZSTD(opt)→encrypt(opt)
+                    Use case: audio(MP3/FLAC/OGG), video, text, any binary files
+                    NO decoding/transcoding, only compression+encryption+MOE header
+                    No -p required
+  pack_ex_stream  - Streaming encryption pack: raw file→chunked encrypt(no compress)→v0.2.00 .moe
+                    Use case: large audio files for streaming playback
+                    Auto-detects audio format (WAV/FLAC/MP3/VORBIS) stored in header
+                    Use -s to set custom chunk size (default 64KB)
+                    No -p or -z needed (compression not supported)
+  unpack          - Image resource unpacking: decrypt(opt)→decompress(opt)→KTX2 validate→.ktx2
+                    Use case: unpack .moe files created by the pack command
+  unpack_ex       - Generic resource unpacking: decrypt(opt)→decompress(opt)→raw file (no ext)
+                    Use case: unpack .moe files created by the pack_ex command
+                    No KTX2 validation, restores original binary data directly
 
 [Options]
   -i / -in_put / -in       Input path (file/directory to pack, or .moe file to unpack)
@@ -100,16 +112,18 @@ MoePack Pack Tool - English Help
   -z / -ztsd_level / -zl   ZSTD compression level (pack default 15; pack_ex default 0=off, set >0 to enable)
   -k / -key                Encryption key (no key = no encryption; required if encrypted)
   -l / -log_level          Log level (0=minimal / 1=normal / 2=verbose / 3=debug)
+  -s / -stream             Chunk size in bytes for pack_ex_stream (default 65536 = 64KB)
 
 [Help]
   -h / -help               Show Chinese help
   -h/-help -en/-english    Show English help
 
 [Examples]
-  pack      -i D:\textures -p WINDOWS -o D:\output -z 17 -k mykey -l 2
-  pack_ex   -i D:\audio\bgm.mp3 -o D:\output -k mykey
-  unpack    -i D:\output\texture.moe -o D:\unpacked -k mykey
-  unpack_ex -i D:\output\bgm.moe -o D:\unpacked -k mykey
+  pack            -i D:\textures -p WINDOWS -o D:\output -z 17 -k mykey -l 2
+  pack_ex         -i D:\audio\bgm.mp3 -o D:\output -k mykey
+  pack_ex_stream  -i D:\audio\bgm.mp3 -o D:\output -k mykey -s 131072
+  unpack          -i D:\output\texture.moe -o D:\unpacked -k mykey
+  unpack_ex       -i D:\output\bgm.moe -o D:\unpacked -k mykey
 )"}
 };
 
@@ -122,7 +136,8 @@ const std::map<std::string, std::string> g_param_alias = {
     {"-key", "-k"},
     {"-log_level", "-l"},
     {"-help", "-h"},
-    {"-english", "-en"}, {"-en", "-en"}
+    {"-english", "-en"}, {"-en", "-en"},
+    {"-stream", "-s"}, {"-s", "-s"}
 };
 
 // 命令类型枚举
@@ -131,7 +146,8 @@ enum CmdType {
     CMD_UNPACK = 0,
     CMD_PACK = 1,
     CMD_PACK_EX = 2,
-    CMD_UNPACK_EX = 3
+    CMD_UNPACK_EX = 3,
+    CMD_PACK_EX_STREAM = 4
 };
 
 // 参数处理器映射
@@ -145,6 +161,8 @@ struct CommandContext {
     int log_level = 1;
     bool show_help = false;
     bool english_help = false;
+    bool stream_mode = false;
+    uint32_t chunk_size = 65536;
 
     // 验证必要参数（pack 需要 platform，其他命令不需要）
     bool validate(CmdType cmd_type = CMD_PACK) const {

@@ -19,13 +19,14 @@
 // 1  封包命令(pack)
 // 2  非图片封包(pack_ex)
 // 3  非图片解包(unpack_ex)
+// 4  流式加密封包(pack_ex_stream)
 int is_pack_command = 1;
 
 int main() {
 	SetConsoleOutputCP(65001); // 设置控制台编码为UTF-8
 	SetConsoleCP(65001);
     std::cout << "============ MoePack 打包工具 ============" << std::endl;
-    std::cout << "可用命令: pack | pack_ex | unpack | unpack_ex" << std::endl;
+    std::cout << "可用命令: pack | pack_ex | pack_ex_stream | unpack | unpack_ex" << std::endl;
     std::cout << "输入命令+参数 (输入 'exit' 退出, 输入 -h 查看详细帮助):" << std::endl;
 
     std::string input;
@@ -46,6 +47,10 @@ int main() {
             }
             else if (args[0] == "unpack_ex" || args[0] == "Unpack_ex" || args[0] == "UNPACK_EX") {
                 is_pack_command = 3;
+                args.erase(args.begin());
+            }
+            else if (args[0] == "pack_ex_stream" || args[0] == "Pack_ex_stream" || args[0] == "PACK_EX_STREAM") {
+                is_pack_command = 4;
                 args.erase(args.begin());
             }
             else if (args[0] == "Pack" || args[0] == "pack" || args[0] == "PACK") {
@@ -83,7 +88,7 @@ void cmd(const std::vector<std::string>& args) {
             ctx.english_help = true;
         }
         else if (param == "-i" || param == "-o" || param == "-p" ||
-            param == "-z" || param == "-k" || param == "-l") {
+            param == "-z" || param == "-k" || param == "-l" || param == "-s") {
             // 需要参数的选项
             if (i + 1 >= args.size() || args[i + 1][0] == '-') {
                 cout << "错误: 参数 " << args[i] << " 需要一个值" << std::endl;
@@ -131,6 +136,18 @@ void cmd(const std::vector<std::string>& args) {
                     has_error = true;
                 }
             }
+            else if (param == "-s") {//流式加密块大小命令处理
+                try {
+                    int cs = std::stoi(value);
+                    if (cs <= 0) cs = 65536;
+                    ctx.chunk_size = static_cast<uint32_t>(cs);
+                    ctx.stream_mode = true;
+                }
+                catch (...) {
+                    std::cout << "错误: 无效的块大小 " << value << std::endl;
+                    has_error = true;
+                }
+            }
         }
         else if (param[0] == '-') {// 未知参数
             std::cout << "警告: 未知参数 " << args[i] << std::endl;
@@ -169,12 +186,16 @@ void cmd(const std::vector<std::string>& args) {
     packer.encryption(!ctx.encryption_key.empty(), ctx.encryption_key);
 
     if (!has_error) {
-        // pack_ex/unpack_ex 不需要平台参数
-        if (cmd_type == CMD_PACK || cmd_type == CMD_PACK_EX) {
+        if (cmd_type == CMD_PACK) {
             packer.set_dst_platform(ctx.platform);
         }
 
-        if (cmd_type == CMD_PACK) {
+        if (cmd_type == CMD_PACK_EX_STREAM) {
+            // 流式加密不支持压缩
+            packer.ztsd_compression(false, 0);
+            cout << packer.pack_ex_stream(ctx.input_path, ctx.output_path, ctx.chunk_size);
+        }
+        else if (cmd_type == CMD_PACK) {
             cout << packer.pack(ctx.input_path, ctx.output_path);
         }
         else if (cmd_type == CMD_UNPACK) {
