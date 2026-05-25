@@ -104,6 +104,16 @@ public:
 	*/
 	std::string pack_ex(std::string in_path, std::string out_path);
 
+	/**
+	* @brief 分块加密封包函数 (V2)：对音频文件进行分块加密并输出 v0.2.00 格式的 .moe 文件
+	* @param in_path 输入文件路径
+	* @param out_path 输出打包文件路径
+	* @param chunk_size 加密块大小(字节), 默认 65536 (64KB)
+	* @return std::string 成功执行返回"SUCCESS"
+	* @throw std::runtime_error 文件读取/加密/写入失败时抛出异常
+	*/
+	std::string pack_ex_stream(std::string in_path, std::string out_path,
+	                            uint32_t chunk_size = 65536);
 
 
 
@@ -147,6 +157,18 @@ public:
     * @throw std::runtime_error 加密初始化/参数无效/密钥派生/内存分配失败时抛出异常
     */
 	UniquePtr_uChar _encrypt( unsigned char* data,int& size,std::string key);
+
+	/**
+	* @brief 分块加密 (基于 libsodium crypto_secretstream_xchacha20poly1305)
+	* @param data 待加密数据
+	* @param size 数据大小 (字节)
+	* @param key 加密密码
+	* @param chunk_size 每块最大明文大小 (字节)
+	* @param out_chunk_count [输出] 加密后的总块数
+	* @return UniquePtr_uChar 加密后的数据 (stream_header + salt + 所有块)
+	*/
+	UniquePtr_uChar _encrypt_stream(unsigned char* data, int size, std::string key,
+	                                 uint32_t chunk_size, uint32_t& out_chunk_count);
 
 	
 

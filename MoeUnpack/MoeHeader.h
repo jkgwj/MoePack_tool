@@ -142,7 +142,6 @@ struct MoeHeader//以大端模式存储
 static_assert(sizeof(MoeHeader) == 90, u8"MoeHeader 大小错误！请检查#pragma pack和字段定义");
 
 // MoeHeader V2 — 分块加密版本 v0.2.00
-// 去掉了 ZSTD 压缩, 新增分块加密字段和音频格式字段
 #pragma pack(push, 1) // 紧凑存储
 struct MoeHeaderV2
 {

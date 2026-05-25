@@ -1,26 +1,46 @@
-﻿# MoePack_tool
+# MoePack_tool
 这是一个用于封包游戏资源的工具，它还带有一个轻量的解包工具
 它可以把图片资源封包成对应目标平台的gpu压缩格式（使用ktx2容器），从而平衡游戏资源体积与加载速度。
 对于非图片资源（MP3/FLAC/OGG等音频文件、或其他二进制文件），提供 pack_ex / unpack_ex 进行加密封包。
+对于需要流式播放的大音频文件，提供 pack_ex_stream 进行分块加密，配合 MoeStreamReader 实现边读边播。
 
 ## 功能
 - 封包图片资源（解码→KTX2 GPU压缩→加密/压缩→.moe）
 - 解包图片资源（.moe→解密/解压→KTX2验证→输出）
 - 封包非图片资源（原始文件→加密/压缩→.moe）
 - 解包非图片资源（.moe→解密/解压→输出原始文件）
+- 流式加密封包（原始音频→分块加密→v0.2.00格式.moe）
+- 流式解包读取（MoeStreamReader，逐块解密，适合音频边读边播）
+
+## 文件格式版本
+
+| 版本 | 头部结构 | 大小 | 加密方式 | 适用场景 |
+|------|---------|------|---------|---------|
+| v0.1.00 | MoeHeader | 90B | 一次性 XSalsa20-Poly1305 | 旧格式，仅解包向下兼容 |
+| v0.2.00 | MoeHeaderV2 | 98B | 一次性 或 分块 Chacha20-Poly1305 | 当前格式，所有新打包均使用 |
+
+- **打包永远使用 v0.2.00**，v0.1.00 仅用于解包向下兼容
+- V2 非分块模式（chunk_count=0）：加密方式与 V1 相同，适合纹理和小文件
+- V2 分块模式（chunk_count>0）：使用 crypto_secretstream，适合大音频流式播放
 
 ## 工具的工作流程
 ### 图片封包流程(pack)
-解码图片（stb）->压缩图片（basisu）->打包成ktx2容器（ktx2）->ztsd压缩（可选）->加密（sodium 可选）->写入封包文件（.moe）
+解码图片（stb）->压缩图片（basisu）->打包成ktx2容器（ktx2）->ztsd压缩（可选）->加密（sodium 可选）->写入封包文件（.moe, V2头部）
 
 ### 图片解包流程(unpack)
-读取封包文件（.moe）->解密（sodium 可选）->ztsd解压（可选）->ktx2容器验证（ktx2）->输出.ktx2文件
+读取封包文件（.moe）->自动检测V1/V2版本->解密（sodium 可选）->ztsd解压（可选）->ktx2容器验证（ktx2）->输出.ktx2文件
 
 ### 非图片封包流程(pack_ex)
-读取原始文件 -> ztsd压缩（可选）->加密（sodium 可选）->添加MOE文件头->写入封包文件（.moe）
+读取原始文件 -> ztsd压缩（可选）->加密（sodium 可选）->添加V2头部->写入封包文件（.moe）
 
 ### 非图片解包流程(unpack_ex)
-读取封包文件（.moe）->解密（sodium 可选）->ztsd解压（可选）->输出原始文件（无扩展名）
+读取封包文件（.moe）->自动检测V1/V2版本->解密（sodium 可选）->ztsd解压（可选）->输出原始文件（无扩展名）
+
+### 流式加密封包流程(pack_ex_stream)
+读取原始文件 -> 检测音频格式(WAV/FLAC/MP3/VORBIS) -> 分块加密(crypto_secretstream) -> 添加V2头部 -> 写入.moe文件
+
+### 流式解包流程(MoeStreamReader)
+打开.moe文件 -> 解析V2头部 -> 密钥派生 -> 逐块读取解密(read_chunk) -> 音频引擎边读边播
 
 ## 依赖
 封包工具依赖以下开源库：
@@ -73,19 +93,41 @@ MoePack和MoeUnpack是相互独立的项目。
 MoeUnpack是一个头文件库，只需要包含MoeUnpack.h和使用#define MOE_UNPACK_IMPLEMENTATION 即可。（前提是确保你的环境内已配置ztsd,ktx2,sodium）
 如果你不需要检查ktx2容器的完整性，cmake使用MOE_UNPACK_DEBUG=OFF。
 当然，直接使用头文件的话，不要设置MOE_UNPACK_NO_KTX2_CHECK宏。
-- 简单示例如下：
+
+解包函数自动检测文件版本（V1/V2），无需手动指定：
 ```cpp
 #define MOE_UNPACK_IMPLEMENTATION
 #include "MoeUnpack.h"
 int main(){
-    // 解包图片资源（会进行KTX2验证）
+    // 解包图片资源（会进行KTX2验证，自动适配V1/V2格式）
     MoeUnpack::unpack("path/to/your/file.moe","output/directory/");
 
-    // 解包非图片资源（不做KTX2验证，直接返回原始数据）
+    // 解包非图片资源（不做KTX2验证，直接返回原始数据，自动适配V1/V2格式）
     MoeUnpack::unpack_ex("path/to/your/audio.moe","output/directory/");
 
     return 0;
 }
+```
+
+### 使用MoeStreamReader（流式解包）
+MoeStreamReader 用于流式读取 v0.2.00 分块加密的 .moe 文件（由 pack_ex_stream 生成），适合音频引擎边读边播：
+```cpp
+#include "MoeStreamReader.h"
+
+MoeStreamReader reader;
+if (!reader.open("audio.moe", "password")) {
+    // 打开失败, 通过 reader.error() 获取错误原因
+    return;
+}
+
+// 循环读取解密块
+std::vector<uint8_t> buf(reader.header().chunk_size);
+while (!reader.is_eof()) {
+    size_t len = reader.read_chunk(buf.data(), buf.size());
+    // 将 buf[0..len-1] 送入音频解码器播放
+}
+
+reader.close();
 ```
 
 ### 使用MoePack
@@ -100,10 +142,12 @@ MoePack提供了命令行工具，可以直接在终端中使用。
 
 - **pack** - 图片资源封包（需要 -p，默认压缩等级15）
 - **pack_ex** - 非图片资源封包（无需 -p，默认不压缩仅加密）
-- **unpack** - 图片资源解包
-- **unpack_ex** - 非图片资源解包
+- **pack_ex_stream** - 流式加密封包（无需 -p、-z，分块加密，默认块大小64KB）
+- **unpack** - 图片资源解包（自动检测V1/V2版本）
+- **unpack_ex** - 非图片资源解包（自动检测V1/V2版本）
 
 解包时会自动根据文件头中的标志位判断是否需要解密/解压，无需手动指定。
+解包会自动检测文件版本（v0.1.00 或 v0.2.00），向下兼容旧格式。
 
 具体可以使用 -h 命令查看帮助信息。
 
@@ -115,16 +159,20 @@ pack -i D:\textures -p WINDOWS -o D:\output -z 17 -k mykey
 # 非图片封包（默认不压缩，仅加密）
 pack_ex -i D:\audio\bgm.mp3 -o D:\output -k mykey
 
-# 图片解包
+# 流式加密封包（分块加密，适合大音频文件）
+pack_ex_stream -i D:\audio\bgm.flac -o D:\output -k mykey -s 131072
+
+# 图片解包（自动检测V1/V2）
 unpack -i D:\output\image.moe -o D:\unpacked -k mykey
 
-# 非图片解包
+# 非图片解包（自动检测V1/V2）
 unpack_ex -i D:\output\bgm.moe -o D:\unpacked -k mykey
 ```
 
 ## 后期目标
 
 - ~~支持音频资源的封包与解包~~ (已完成: pack_ex / unpack_ex)
+- ~~支持分块加密与流式解包~~ (已完成: pack_ex_stream / MoeStreamReader)
 - 提供gpu纹理压缩的高级参数设置
 - 支持更多的加密方式
 - 支持更多的GPU压缩格式
