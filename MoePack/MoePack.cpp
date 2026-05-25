@@ -514,10 +514,10 @@ std::string MoePack::pack(std::string in_path, const std::string out_path) {
                 }
             }
 
-            // 创建 MoeHeaderV2 文件头
-            MoeHeaderV2 moe_header;
+            // 创建 MoeHeader 文件头
+            MoeHeader moe_header;
 
-            // 设置 MoeHeaderV2 参数
+            // 设置 MoeHeader 参数
             moe_header.ztsd_on = pack_params.ztsd_on ? 1 : 0;
             moe_header.encrypted_on = pack_params.is_encryption ? 1 : 0;
             moe_header.original_size = static_cast<uint32_t>(size);
@@ -574,7 +574,7 @@ std::string MoePack::pack(std::string in_path, const std::string out_path) {
                 cout << "->封包完成：" << endl;
                 cout << "    输出文件: " << in_srcdata_names[i] << ".moe" << endl;
                 cout << "    输出大小: " << packed_data_size << " 字节" << endl;
-                cout << "    头部大小: " << sizeof(MoeHeaderV2) << " 字节" << endl;
+                cout << "    头部大小: " << sizeof(MoeHeader) << " 字节" << endl;
                 cout << "    数据大小: " << size << " 字节" << endl;
                 
                 if (log_level >= 2 && src_data_size > 0) {
@@ -625,8 +625,8 @@ std::string MoePack::pack(std::string in_path, const std::string out_path) {
             // 输出格式信息
             if (log_level >= 2) {
                 cout << "  文件格式: .moe (MOE_ARC格式)" << endl;
-                cout << "  头部大小: " << sizeof(MoeHeaderV2) << " 字节" << endl;
-                cout << "  版本号: " << MOE_PackVersion_V2 << endl;
+                cout << "  头部大小: " << sizeof(MoeHeader) << " 字节" << endl;
+                cout << "  版本号: " << MOE_PackVersion << endl;
             }
         }
         else {
@@ -1016,10 +1016,10 @@ std::string MoePack::pack_ex(std::string in_path, std::string out_path) {
                 }
             }
 
-            // 创建 MoeHeaderV2 文件头
-            MoeHeaderV2 moe_header;
+            // 创建 MoeHeader 文件头
+            MoeHeader moe_header;
 
-            // 设置 MoeHeaderV2 参数
+            // 设置 MoeHeader 参数
             moe_header.ztsd_on = pack_params.ztsd_on ? 1 : 0;
             moe_header.encrypted_on = pack_params.is_encryption ? 1 : 0;
             moe_header.original_size = static_cast<uint32_t>(size);
@@ -1070,7 +1070,7 @@ std::string MoePack::pack_ex(std::string in_path, std::string out_path) {
                 cout << "->封包完成：" << endl;
                 cout << "    输出文件: " << in_srcdata_names[i] << ".moe" << endl;
                 cout << "    输出大小: " << packed_data_size << " 字节" << endl;
-                cout << "    头部大小: " << sizeof(MoeHeaderV2) << " 字节" << endl;
+                cout << "    头部大小: " << sizeof(MoeHeader) << " 字节" << endl;
                 cout << "    数据大小: " << size << " 字节" << endl;
 
                 if (log_level >= 3) {
@@ -1240,7 +1240,7 @@ std::string MoePack::pack_ex_stream(std::string in_path, std::string out_path,
     int data_size = static_cast<int>(file_size_val);
 
     // 检测音频格式
-    MOE_AudioFormat audio_fmt = _detect_audio_format(raw_file_data, file_size_val);
+    MOE_Pack_AudioFormat audio_fmt = _detect_audio_format(raw_file_data, file_size_val);
 
     if (log_level >= 1) {
         cout << "分块加密打包: " << fs::path(in_path).filename().string()
@@ -1253,17 +1253,23 @@ std::string MoePack::pack_ex_stream(std::string in_path, std::string out_path,
                                                   pack_params.encryption_key,
                                                   chunk_size, chunk_count);
 
-    // 构建 MoeHeaderV2
-    MoeHeaderV2 header;
+    // 构建 MoeHeader
+    MoeHeader header;
     header.chunk_size   = chunk_size;
     header.chunk_count  = chunk_count;
     header.audio_format = static_cast<uint32_t>(audio_fmt);
     header.original_size = static_cast<uint32_t>(file_size_val);
 
-    // SHA-256 校验
-    if (data_size > 0) {
+    // 分块加密后总大小: stream_header(24) + salt(16) + 原始数据 + 每块ABYTES(17)
+    size_t encrypted_size = crypto_secretstream_xchacha20poly1305_HEADERBYTES
+                          + crypto_pwhash_SALTBYTES
+                          + file_size_val
+                          + static_cast<size_t>(chunk_count) * crypto_secretstream_xchacha20poly1305_ABYTES;
+
+    // SHA-256 对加密后数据做校验
+    {
         unsigned char hash[crypto_hash_sha256_BYTES];
-        crypto_hash_sha256(hash, raw_file_data, file_size_val);
+        crypto_hash_sha256(hash, encrypted.get(), encrypted_size);
         header.set_check_data(hash, crypto_hash_sha256_BYTES);
     }
 
@@ -1296,11 +1302,7 @@ std::string MoePack::pack_ex_stream(std::string in_path, std::string out_path,
         throw std::runtime_error("无法创建输出文件：" + wstringToUtf8(out_file_path));
     }
 
-    // 分块加密后总大小: header(24) + salt(16) + 原始数据 + 每块ABYTES(17)
-    size_t encrypted_size = 40 + file_size_val
-        + static_cast<size_t>(chunk_count) * crypto_secretstream_xchacha20poly1305_ABYTES;
-
-    fwrite(&header, sizeof(MoeHeaderV2), 1, fp);
+    fwrite(&header, sizeof(MoeHeader), 1, fp);
     fwrite(encrypted.get(), 1, encrypted_size, fp);
     fclose(fp);
 

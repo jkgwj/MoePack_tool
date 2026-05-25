@@ -290,52 +290,7 @@ inline static bool write_data_to_dir(const std::wstring& wpath, const unsigned c
         return false;
     }
 }
-inline static bool write_data_to_dir(const std::wstring& wpath,const unsigned char* data,size_t size,const MoeHeader* header = nullptr) {
-    // 宽字符路径转标准filesystem路径
-    fs::path fs_path(wpath);
-
-    try {
-        fs::create_directories(fs_path.parent_path());
-
-        // 打开文件进行写入
-        FILE* fp = nullptr;
-#if defined(_WIN32) || defined(_WIN64)
-        fp = _wfopen(fs_path.c_str(), L"wb"); // Windows宽字符
-#else
-        fp = fopen(fs_path.c_str(), "wb");    // Linux/macOS UTF-8窄字符
-#endif
-
-        if (!fp) {
-            return false;
-        }
-
-        bool success = true;
-
-        // 如果有头部，先写入头部
-        if (header) {
-            size_t header_size = sizeof(MoeHeader);
-            size_t written_header = fwrite(header, 1, header_size, fp);
-            if (written_header != header_size) {
-                success = false;
-            }
-        }
-
-        // 然后写入主体数据
-        if (success && data && size > 0) {
-            size_t written_data = fwrite(data, 1, size, fp);
-            if (written_data != size) {
-                success = false;
-            }
-        }
-
-        fclose(fp);
-        return success;
-    }
-    catch (const fs::filesystem_error&) {
-        return false;
-    }
-}
-inline static bool write_data_to_dir(const std::wstring& wpath, const unsigned char* data, size_t size, const MoeHeaderV2* header) {
+inline static bool write_data_to_dir(const std::wstring& wpath, const unsigned char* data, size_t size, const MoeHeader* header) {
     fs::path fs_path(wpath);
 
     try {
@@ -355,7 +310,7 @@ inline static bool write_data_to_dir(const std::wstring& wpath, const unsigned c
         bool success = true;
 
         if (header) {
-            size_t header_size = sizeof(MoeHeaderV2);
+            size_t header_size = sizeof(MoeHeader);
             size_t written_header = fwrite(header, 1, header_size, fp);
             if (written_header != header_size) {
                 success = false;

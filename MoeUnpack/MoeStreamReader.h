@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Copyright 2026 jkgwj
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -19,20 +19,8 @@
 #include <string>
 #include <fstream>
 #include <cstdint>
+#include <vector>
 
-// 流式解包读取器
-// 用于逐块解密 v0.2.00 格式的 .moe 文件
-// 每次 read_chunk() 从文件读取一块密文, 解密后返回明文
-//
-// 典型用法:
-//   MoeStreamReader reader;
-//   reader.open("audio.moe", "password");
-//   while (!reader.is_eof()) {
-//       size_t len = reader.read_chunk(buf, reader.header().chunk_size);
-//       // 处理 buf[0..len-1] 中的解密数据
-//   }
-//   reader.close();
-//
 class MoeStreamReader {
 public:
     enum class Error {
@@ -44,44 +32,52 @@ public:
         KeyDerivationFailed,
         DecryptInitFailed,
         DecryptionFailed,
-        FileReadError
+        FileReadError,
+        IntegrityCheckFailed
     };
 
     MoeStreamReader() = default;
     ~MoeStreamReader();
 
-    // 不可拷贝 
     MoeStreamReader(const MoeStreamReader&) = delete;
     MoeStreamReader& operator=(const MoeStreamReader&) = delete;
 
-    // 打开 .moe 文件, 解析 MoeHeaderV2, 派生密钥, 初始化解密状态
-    // 返回 true 表示成功, false 表示失败 (可通过 error() 获取错误原因)
+    // 打开 .moe 文件, 解析 MoeHeader, 派生密钥, 初始化解密状态, 校验完整性
     bool open(const char* file_path, const char* password);
 
     // 读取并解密下一块数据, 返回实际解密出的明文字节数, 0 表示已读完或发生错误
-    // buffer_size 应不小于 header().chunk_size
     size_t read_chunk(void* buffer, size_t buffer_size);
 
-    // 重置读取位置到文件开头 (关闭后重新打开, 重新派生密钥)
+    // 字节级读取, 可跨块边界, 返回实际读取的字节数, 0 表示 EOF 或错误
+    size_t read_bytes(void* buffer, size_t size);
+
+    // 定位到解密流中的指定字节位置, origin: 0=SEEK_SET, 1=SEEK_CUR, 2=SEEK_END
+    bool seek_bytes(int64_t offset, int origin);
+
+    // 当前在解密流中的字节位置
+    uint32_t tell_bytes() const;
+
+    // 重置读取位置到开头
     bool reset();
 
     // 关闭文件并清零敏感数据
     void close();
 
-    // 静态工具: 检测 .moe 文件版本, 返回 1 (V1), 2 (V2), -1 (无效)
+    // 静态工具: 检测 .moe 文件是否为有效格式
     static int detect_version(const char* file_path);
 
     // 信息查询
-    const MoeHeaderV2& header() const { return header_; }
-    Error           error()        const { return error_; }
-    bool            is_eof()       const { return current_chunk_ >= header_.chunk_count; }
-    bool            is_open()      const { return file_.is_open(); }
-    uint32_t        current_chunk() const { return current_chunk_; }
+    const MoeHeader& header()    const { return header_; }
+    Error            error()     const { return error_; }
+    bool             is_eof()    const { return current_byte_pos_ >= header_.original_size; }
+    bool             is_open()   const { return file_.is_open(); }
+    uint32_t         current_chunk() const { return current_chunk_; }
+    uint32_t         current_byte_pos() const { return current_byte_pos_; }
 
 private:
     std::ifstream file_;
-    MoeHeaderV2   header_;
-    unsigned char derived_key_[32];  // crypto_secretstream_xchacha20poly1305_KEYBYTES
+    MoeHeader     header_;
+    unsigned char derived_key_[crypto_secretstream_xchacha20poly1305_KEYBYTES];
     crypto_secretstream_xchacha20poly1305_state state_;
     Error    error_ = Error::None;
     uint32_t current_chunk_ = 0;
@@ -89,6 +85,24 @@ private:
     std::string file_path_;
     std::string password_;
 
+    // 字节级读取状态
+    std::vector<unsigned char> chunk_buffer_;
+    size_t   chunk_buffer_pos_ = 0;
+    size_t   chunk_buffer_size_ = 0;
+    uint32_t current_byte_pos_ = 0;
+
+    // SHA-256 增量校验
+    crypto_hash_sha256_state hash_state_;
+    bool     hash_initialized_ = false;
+    bool     hash_verified_ = false;
+
+    // 用于 seek 回退时重新初始化
+    unsigned char saved_stream_header_[crypto_secretstream_xchacha20poly1305_HEADERBYTES];
+    unsigned char saved_salt_[crypto_pwhash_SALTBYTES];
+    std::streamoff data_start_offset_ = 0;
+
     bool _derive_key_and_init(const unsigned char* stream_header,
                                const unsigned char* salt);
+    bool _reinit_crypto_state();
+    bool _read_next_chunk();
 };

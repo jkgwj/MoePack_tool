@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Copyright 2026 jkgwj
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -20,22 +20,17 @@
 #include<cstring>
 #include <stdexcept>
 
-// 自定义删除器
 template<typename T>
 struct FreeDeleter {
     void operator()(T* ptr) const {
-        if (ptr) free(ptr); // 析构时调用 free，而非 delete
+        if (ptr) free(ptr);
     }
 };
-// 封装 std::unique_ptr + FreeDeleter，指向 unsigned char 类型
 using UniquePtr_uChar = std::unique_ptr<unsigned char, FreeDeleter<unsigned char>>;
 
-static const char MOE_PackVersion[8] = { 'v','0','.','1','.','0','0','\0' }; // v0.1.0(0)，最后一位标识位
-static const char MOE_PackVersion_V2[8] = { 'v','0','.','2','.','0','0','\0' }; // v0.2.0(0)，分块加密版本
+static const char MOE_PackVersion[8] = { 'v','0','.','2','.','0','0','\0' };
 
-// 字节序转换
 namespace MOE_Endian {
-    // 判断当前平台是否为小端
     inline bool is_host_little_endian() {
         union {
             uint32_t i;
@@ -44,7 +39,6 @@ namespace MOE_Endian {
         return test.c[0] == 0x04;
     }
 
-    // 主机序 → 大端
     inline uint32_t htobe32(uint32_t host32) {
         if (is_host_little_endian()) {
             return ((host32 & 0x000000FF) << 24) |
@@ -69,9 +63,8 @@ namespace MOE_Endian {
         return host64;
     }
 
-    // 大端 → 主机序
     inline uint32_t betoh32(uint32_t be32) {
-        return htobe32(be32); // 小端反转两次=原数，大端直接返回
+        return htobe32(be32);
     }
 
     inline uint64_t betoh64(uint64_t be64) {
@@ -79,155 +72,86 @@ namespace MOE_Endian {
     }
 }
 
-#pragma pack(push, 1) // 紧凑存储
+#pragma pack(push, 1)
 
-struct MoeHeader//以大端模式存储
+struct MoeHeader
 {
-	char     magic[4]= { 'M','O','E','\0'};                           // 文件 "MOE"
-	char     version[8];                                              // 文件版本号
-	uint32_t header_size= sizeof(MoeHeader);                          // 头部大小
-	uint8_t  ztsd_on=1;                                               // 是否使用 ZTSD 压缩（0 = 否，1 = 是）
-	uint8_t  encrypted_on=0;                                          // 是否加密（0 = 否，1 = 是）
-	uint8_t check_data[64];                                           // 校验数据
-	uint64_t data_size = 0;                                           // 数据大小（字节）
+    char     magic[4];
+    char     version[8];
+    uint32_t header_size;
+    uint8_t  ztsd_on;
+    uint8_t  encrypted_on;
+    uint8_t  check_data[32];
+    uint32_t chunk_size;
+    uint32_t chunk_count;
+    uint32_t audio_format;
+    uint32_t original_size;
+    uint8_t  reserved[32];
 
-	
-	MoeHeader() {
+    MoeHeader() {
         memcpy(magic, "MOE\0", 4);
         memcpy(version, MOE_PackVersion, 8);
-        
-	}
-	MoeHeader(const MoeHeader& other) {
-		memcpy(this, &other, sizeof(MoeHeader));
-	}
-	MoeHeader(const uint8_t* _check_data, size_t check_size, uint64_t data_size) {
-        memcpy(magic, "MOE\0", 4);
-		memcpy(version, MOE_PackVersion, 8); 
-		ztsd_on = 1;
-		encrypted_on = 0;
-		set_check_data(_check_data, check_size);
-		this->data_size = data_size;
-	}
-	//设置校验数据
-	void set_check_data(const uint8_t* data, size_t size) {
-        assert(size <= sizeof(check_data));
-		if (size > sizeof(check_data)) {
-			size = sizeof(check_data); // 限制大小不超过64字节
-		}
-		memcpy(check_data, data, size);
-	}
-	// 设置数据大小
-	void set_data_size(uint64_t size) {
-		data_size = size;
-	}
-    // 将多字节字段转为大端
+        header_size = sizeof(MoeHeader);
+        ztsd_on = 1;
+        encrypted_on = 0;
+        memset(check_data, 0, sizeof(check_data));
+        chunk_size = 0;
+        chunk_count = 0;
+        audio_format = 0;
+        original_size = 0;
+        memset(reserved, 0, sizeof(reserved));
+    }
+
+    MoeHeader(const MoeHeader& other) {
+        memcpy(this, &other, sizeof(MoeHeader));
+    }
+
+    void set_check_data(const uint8_t* data, size_t size) {
+        if (size > sizeof(check_data)) size = sizeof(check_data);
+        memcpy(check_data, data, size);
+    }
+
     void to_big_endian() {
-        header_size = MOE_Endian::htobe32(header_size);
-        data_size = MOE_Endian::htobe64(data_size);
+        header_size  = MOE_Endian::htobe32(header_size);
+        chunk_size   = MOE_Endian::htobe32(chunk_size);
+        chunk_count  = MOE_Endian::htobe32(chunk_count);
+        audio_format = MOE_Endian::htobe32(audio_format);
+        original_size = MOE_Endian::htobe32(original_size);
     }
 
-    // 将多字节字段从大端转回主机序
     void from_big_endian() {
-        header_size = MOE_Endian::betoh32(header_size);
-        data_size = MOE_Endian::betoh64(data_size);
+        header_size  = MOE_Endian::betoh32(header_size);
+        chunk_size   = MOE_Endian::betoh32(chunk_size);
+        chunk_count  = MOE_Endian::betoh32(chunk_count);
+        audio_format = MOE_Endian::betoh32(audio_format);
+        original_size = MOE_Endian::betoh32(original_size);
     }
 
-    // 校验"MOE_ARC"是否合法
     bool is_magic_valid() const {
         return memcmp(magic, "MOE", 3) == 0;
     }
 };
+
+static_assert(sizeof(MoeHeader) == 98, u8"MoeHeader 大小错误！请检查#pragma pack和字段定义");
 #pragma pack(pop)
 
-static_assert(sizeof(MoeHeader) == 90, u8"MoeHeader 大小错误！请检查#pragma pack和字段定义");
-
-// MoeHeader V2 — 分块加密版本 v0.2.00
-#pragma pack(push, 1) // 紧凑存储
-struct MoeHeaderV2
-{
-	char     magic[4];           // "MOE\0"
-	char     version[8];         // "v0.2.00\0"
-	uint32_t header_size;        // = 98
-	uint8_t  ztsd_on;            // = 0 (不使用压缩)
-	uint8_t  encrypted_on;       // = 1 (必须加密)
-	uint8_t  check_data[32];     // SHA-256 校验数据 (前 32 字节)
-	uint32_t chunk_size;         // 每块最大明文字节数
-	uint32_t chunk_count;        // 总块数
-	uint32_t audio_format;       // 原始音频编码格式 (对应 ma_encoding_format 枚举值)
-	uint32_t original_size;      // 解密后的原始数据总大小 (字节)
-	uint8_t  reserved[32];       // 保留字段, 填充为 0
-
-	MoeHeaderV2() {
-		memcpy(magic, "MOE\0", 4);
-		memcpy(version, MOE_PackVersion_V2, 8);
-		header_size = sizeof(MoeHeaderV2);
-		ztsd_on = 1;
-		encrypted_on = 0;
-		memset(check_data, 0, sizeof(check_data));
-		chunk_size = 0;
-		chunk_count = 0;
-		audio_format = 0;      // ma_encoding_format_unknown
-		original_size = 0;
-		memset(reserved, 0, sizeof(reserved));
-	}
-
-	MoeHeaderV2(const MoeHeaderV2& other) {
-		memcpy(this, &other, sizeof(MoeHeaderV2));
-	}
-
-	void set_check_data(const uint8_t* data, size_t size) {
-		if (size > sizeof(check_data)) size = sizeof(check_data);
-		memcpy(check_data, data, size);
-	}
-
-	// 将多字节字段转为大端
-	void to_big_endian() {
-		header_size  = MOE_Endian::htobe32(header_size);
-		chunk_size   = MOE_Endian::htobe32(chunk_size);
-		chunk_count  = MOE_Endian::htobe32(chunk_count);
-		audio_format = MOE_Endian::htobe32(audio_format);
-		original_size = MOE_Endian::htobe32(original_size);
-	}
-
-	// 将多字节字段从大端转回主机序
-	void from_big_endian() {
-		header_size  = MOE_Endian::betoh32(header_size);
-		chunk_size   = MOE_Endian::betoh32(chunk_size);
-		chunk_count  = MOE_Endian::betoh32(chunk_count);
-		audio_format = MOE_Endian::betoh32(audio_format);
-		original_size = MOE_Endian::betoh32(original_size);
-	}
-
-	bool is_magic_valid() const {
-		return memcmp(magic, "MOE", 3) == 0;
-	}
-	bool is_v2() const {
-		return memcmp(version, MOE_PackVersion_V2, 8) == 0;
-	}
+enum class MOE_Pack_AudioFormat : uint32_t {
+    UNKNOWN = 0,
+    WAV     = 1,
+    FLAC    = 2,
+    MP3     = 3,
+    VORBIS  = 4
 };
 
-static_assert(sizeof(MoeHeaderV2) == 98, u8"MoeHeaderV2 大小错误！请检查#pragma pack和字段定义");
-#pragma pack(pop)
-
-// 音频编码格式枚举 (值与 miniaudio 的 ma_encoding_format 保持一致)
-enum class MOE_AudioFormat : uint32_t {
-	UNKNOWN = 0,
-	WAV     = 1,
-	FLAC    = 2,
-	MP3     = 3,
-	VORBIS  = 4
-};
-
-// 通过文件头部魔数检测音频编码格式
-inline MOE_AudioFormat _detect_audio_format(const unsigned char* data, size_t size) {
-	if (size >= 12 && memcmp(data, "RIFF", 4) == 0
-		&& memcmp(data + 8, "WAVE", 4) == 0)
-		return MOE_AudioFormat::WAV;
-	if (size >= 4 && memcmp(data, "fLaC", 4) == 0)
-		return MOE_AudioFormat::FLAC;
-	if (size >= 4 && memcmp(data, "OggS", 4) == 0)
-		return MOE_AudioFormat::VORBIS;
-	if (size >= 2 && data[0] == 0xFF && (data[1] & 0xE0) == 0xE0)
-		return MOE_AudioFormat::MP3;
-	return MOE_AudioFormat::UNKNOWN;
+inline MOE_Pack_AudioFormat _detect_audio_format(const unsigned char* data, size_t size) {
+    if (size >= 12 && memcmp(data, "RIFF", 4) == 0
+        && memcmp(data + 8, "WAVE", 4) == 0)
+        return MOE_Pack_AudioFormat::WAV;
+    if (size >= 4 && memcmp(data, "fLaC", 4) == 0)
+        return MOE_Pack_AudioFormat::FLAC;
+    if (size >= 4 && memcmp(data, "OggS", 4) == 0)
+        return MOE_Pack_AudioFormat::VORBIS;
+    if (size >= 2 && data[0] == 0xFF && (data[1] & 0xE0) == 0xE0)
+        return MOE_Pack_AudioFormat::MP3;
+    return MOE_Pack_AudioFormat::UNKNOWN;
 }
