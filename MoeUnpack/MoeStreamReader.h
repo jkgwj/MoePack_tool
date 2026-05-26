@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Copyright 2026 jkgwj
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -20,6 +20,17 @@
 #include <fstream>
 #include <cstdint>
 #include <vector>
+
+// 可跨 MoeStreamReader 实例共享的预派生密钥材料
+// 由 Manager 持有的原型在创建时派生一次并缓存，后续 clone 复用，避免重复 Argon2id
+struct MoeKeyMaterial {
+    unsigned char derived_key[crypto_secretstream_xchacha20poly1305_KEYBYTES];
+    unsigned char stream_header[crypto_secretstream_xchacha20poly1305_HEADERBYTES];
+    unsigned char salt[crypto_pwhash_SALTBYTES];
+    MoeHeader header;
+    std::streamoff data_start_offset = 0;
+    bool ready = false;
+};
 
 class MoeStreamReader {
 public:
@@ -59,6 +70,12 @@ public:
 
     // 重置读取位置到开头
     bool reset();
+
+    // 导出已派生的密钥材料，供其他实例复用 
+    void export_key_material(MoeKeyMaterial& out) const;
+
+    // 使用预派生密钥材料打开，跳过 Argon2id 密钥派生
+    bool open_with_cached_key(const char* file_path, const MoeKeyMaterial& km);
 
     // 关闭文件并清零敏感数据
     void close();

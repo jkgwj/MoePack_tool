@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Copyright 2026 jkgwj
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -259,7 +259,7 @@ bool MoeStreamReader::_reinit_crypto_state() {
         state_initialized_ = false;
     }
 
-    // 复用 open 时缓存的 derived_key_，不重跑 Argon2
+    // 复用 open 时缓存的 derived_key_
     int ret = crypto_secretstream_xchacha20poly1305_init_pull(
         &state_, saved_stream_header_, derived_key_);
     if (ret != 0) {
@@ -326,6 +326,106 @@ uint32_t MoeStreamReader::tell_bytes() const {
 
 bool MoeStreamReader::reset() {
     return seek_bytes(0, 0);
+}
+
+void MoeStreamReader::export_key_material(MoeKeyMaterial& out) const {
+    memcpy(out.derived_key, derived_key_, sizeof(derived_key_));
+    memcpy(out.stream_header, saved_stream_header_, sizeof(saved_stream_header_));
+    memcpy(out.salt, saved_salt_, sizeof(saved_salt_));
+    out.header = header_;
+    out.data_start_offset = data_start_offset_;
+    out.ready = true;
+}
+
+bool MoeStreamReader::open_with_cached_key(const char* file_path,
+                                            const MoeKeyMaterial& km) {
+    close();
+
+    if (!km.ready) {
+        error_ = Error::KeyDerivationFailed;
+        return false;
+    }
+
+    file_path_ = file_path;
+    password_  = "";  // 不需要明文密码了
+
+    if (sodium_init() == -1) {
+        error_ = Error::KeyDerivationFailed;
+        return false;
+    }
+
+    file_.open(file_path, std::ios::binary);
+    if (!file_) {
+        error_ = Error::FileOpenFailed;
+        return false;
+    }
+
+    file_.read(reinterpret_cast<char*>(&header_), sizeof(MoeHeader));
+    if (!file_ || file_.gcount() != sizeof(MoeHeader)) {
+        error_ = Error::HeaderParseFailed;
+        return false;
+    }
+
+    if (!header_.is_magic_valid()) {
+        error_ = Error::InvalidMagic;
+        return false;
+    }
+    if (memcmp(header_.version, MOE_PackVersion, 8) != 0) {
+        error_ = Error::UnsupportedVersion;
+        return false;
+    }
+
+    header_.from_big_endian();
+
+    if (header_.header_size != sizeof(MoeHeader)) {
+        error_ = Error::HeaderParseFailed;
+        return false;
+    }
+
+    if (header_.original_size == 0 && header_.chunk_count == 0) {
+        current_chunk_ = 0;
+        current_byte_pos_ = 0;
+        error_ = Error::None;
+        return true;
+    }
+
+    if (header_.chunk_size == 0) {
+        error_ = Error::HeaderParseFailed;
+        return false;
+    }
+
+    // 复制缓存的密钥材料
+    memcpy(derived_key_, km.derived_key, sizeof(derived_key_));
+    memcpy(saved_stream_header_, km.stream_header, sizeof(saved_stream_header_));
+    memcpy(saved_salt_, km.salt, sizeof(saved_salt_));
+    data_start_offset_ = km.data_start_offset;
+
+    // 跳到密文数据起始位置
+    file_.seekg(data_start_offset_);
+
+    // 直接用缓存密钥初始化 stream cipher state，跳过 crypto_pwhash
+    int ret = crypto_secretstream_xchacha20poly1305_init_pull(
+        &state_, saved_stream_header_, derived_key_);
+    if (ret != 0) {
+        sodium_memzero(derived_key_, sizeof(derived_key_));
+        error_ = Error::DecryptInitFailed;
+        return false;
+    }
+    state_initialized_ = true;
+
+    // 初始化 SHA-256 增量校验
+    crypto_hash_sha256_init(&hash_state_);
+    crypto_hash_sha256_update(&hash_state_, saved_stream_header_, sizeof(saved_stream_header_));
+    crypto_hash_sha256_update(&hash_state_, saved_salt_, sizeof(saved_salt_));
+    hash_initialized_ = true;
+    hash_verified_ = false;
+
+    current_chunk_ = 0;
+    current_byte_pos_ = 0;
+    chunk_buffer_pos_ = 0;
+    chunk_buffer_size_ = 0;
+    error_ = Error::None;
+    return true;
 }
 
 void MoeStreamReader::close() {
