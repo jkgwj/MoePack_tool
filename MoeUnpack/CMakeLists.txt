@@ -1,8 +1,8 @@
 ﻿# 解包库（默认静态库，通过 MOE_BUILD_STATIC 控制）
 if(MOE_BUILD_STATIC)
-    add_library (MoeUnpack STATIC "MoeUnpack.cpp" "MoeStreamReader.cpp")
+    add_library (MoeUnpack STATIC "MoeUnpack.cpp" "MoeStreamReader.cpp" "MoeSharedStreamReader.cpp")
 else()
-    add_library (MoeUnpack SHARED "MoeUnpack.cpp" "MoeStreamReader.cpp")
+    add_library (MoeUnpack SHARED "MoeUnpack.cpp" "MoeStreamReader.cpp" "MoeSharedStreamReader.cpp")
 endif()
 
 target_link_libraries(MoeUnpack
