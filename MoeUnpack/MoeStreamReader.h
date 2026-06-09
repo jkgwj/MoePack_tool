@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Copyright 2026 jkgwj
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -71,7 +71,7 @@ public:
     // 重置读取位置到开头
     bool reset();
 
-    // 导出已派生的密钥材料，供其他实例复用 
+    // 导出已派生的密钥材料，供其他实例复用 (在 close 前调用，避免被清零)
     void export_key_material(MoeKeyMaterial& out) const;
 
     // 使用预派生密钥材料打开，跳过 Argon2id 密钥派生

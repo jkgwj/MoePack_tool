@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Copyright 2026 jkgwj
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -259,7 +259,7 @@ bool MoeStreamReader::_reinit_crypto_state() {
         state_initialized_ = false;
     }
 
-    // 复用 open 时缓存的 derived_key_
+    // 复用 open 时缓存的 derived_key_，不重跑 Argon2
     int ret = crypto_secretstream_xchacha20poly1305_init_pull(
         &state_, saved_stream_header_, derived_key_);
     if (ret != 0) {
