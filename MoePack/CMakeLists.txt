@@ -1,7 +1,8 @@
-﻿# 将源代码添加到此项目的可执行文件。
-add_executable (${PROJECT_NAME} "MoePack.cpp"  "cmd.cpp" )
+﻿add_executable(${PROJECT_NAME}
+    "src/MoePack.cpp"
+    "src/cmd.cpp"
+    "src/MoeUtils.cpp")
 
-#添加依赖库
 target_link_libraries(${PROJECT_NAME}
     PUBLIC
     moe_pack_includes
@@ -11,7 +12,6 @@ target_link_libraries(${PROJECT_NAME}
     Vulkan::Headers
     zstd::libzstd
     ktx
-
     MoeUnpack
 )
 
