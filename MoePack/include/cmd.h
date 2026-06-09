@@ -69,6 +69,7 @@ MoePack 打包工具 - 中文帮助
   -k / -key                加密密钥（不提供则禁用加密，解包时如有加密必须指定）
   -l / -log_level          日志等级（0=简洁 / 1=正常 / 2=详细 / 3=调试）
   -s / -stream             流式加密块大小(字节)，仅 pack_ex_stream 使用（默认65536即64KB）
+  -fs / -fixed_salt       使用固定 salt（仅 pack_ex_stream，可选指定 salt，空则使用默认常量）
 
 【帮助参数】
   -h / -help               显示中文帮助
@@ -77,7 +78,7 @@ MoePack 打包工具 - 中文帮助
 【示例】
   pack            -i D:\textures -p WINDOWS -o D:\output -z 17 -k mykey -l 2
   pack_ex         -i D:\audio\bgm.mp3 -o D:\output -k mykey
-  pack_ex_stream  -i D:\audio\bgm.mp3 -o D:\output -k mykey -s 131072
+  pack_ex_stream  -i D:\audio\bgm.mp3 -o D:\output -k mykey -s 131072 -fs
   unpack          -i D:\output\texture.moe -o D:\unpacked -k mykey
   unpack_ex       -i D:\output\bgm.moe -o D:\unpacked -k mykey
 )"},
@@ -113,6 +114,7 @@ MoePack Pack Tool - English Help
   -k / -key                Encryption key (no key = no encryption; required if encrypted)
   -l / -log_level          Log level (0=minimal / 1=normal / 2=verbose / 3=debug)
   -s / -stream             Chunk size in bytes for pack_ex_stream (default 65536 = 64KB)
+  -fs / -fixed_salt       Use fixed salt (pack_ex_stream only, optional salt string, empty for default)
 
 [Help]
   -h / -help               Show Chinese help
@@ -121,7 +123,7 @@ MoePack Pack Tool - English Help
 [Examples]
   pack            -i D:\textures -p WINDOWS -o D:\output -z 17 -k mykey -l 2
   pack_ex         -i D:\audio\bgm.mp3 -o D:\output -k mykey
-  pack_ex_stream  -i D:\audio\bgm.mp3 -o D:\output -k mykey -s 131072
+  pack_ex_stream  -i D:\audio\bgm.mp3 -o D:\output -k mykey -s 131072 -fs
   unpack          -i D:\output\texture.moe -o D:\unpacked -k mykey
   unpack_ex       -i D:\output\bgm.moe -o D:\unpacked -k mykey
 )"}
@@ -137,7 +139,8 @@ const std::map<std::string, std::string> g_param_alias = {
     {"-log_level", "-l"},
     {"-help", "-h"},
     {"-english", "-en"}, {"-en", "-en"},
-    {"-stream", "-s"}, {"-s", "-s"}
+    {"-stream", "-s"}, {"-s", "-s"},
+    {"-fixed_salt", "-fs"}, {"-fs", "-fs"}
 };
 
 // 命令类型枚举
@@ -163,6 +166,9 @@ struct CommandContext {
     bool english_help = false;
     bool stream_mode = false;
     uint32_t chunk_size = 65536;
+
+    bool use_fixed_salt = false;
+    std::string fixed_salt_value;
 
     // 验证必要参数（pack 需要 platform，其他命令不需要）
     bool validate(CmdType cmd_type = CMD_PACK) const {

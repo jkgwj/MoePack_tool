@@ -88,7 +88,8 @@ void cmd(const std::vector<std::string>& args) {
             ctx.english_help = true;
         }
         else if (param == "-i" || param == "-o" || param == "-p" ||
-            param == "-z" || param == "-k" || param == "-l" || param == "-s") {
+            param == "-z" || param == "-k" || param == "-l" || param == "-s" ||
+            param == "-fs") {
             // 需要参数的选项
             if (i + 1 >= args.size() || args[i + 1][0] == '-') {
                 cout << "错误: 参数 " << args[i] << " 需要一个值" << std::endl;
@@ -148,6 +149,13 @@ void cmd(const std::vector<std::string>& args) {
                     has_error = true;
                 }
             }
+            else if (param == "-fs") {//固定 salt 命令处理
+                ctx.use_fixed_salt = true;
+                if (i + 1 < args.size() && args[i + 1][0] != '-') {
+                    ctx.fixed_salt_value = args[i + 1];
+                    i++;
+                }
+            }
         }
         else if (param[0] == '-') {// 未知参数
             std::cout << "警告: 未知参数 " << args[i] << std::endl;
@@ -184,6 +192,14 @@ void cmd(const std::vector<std::string>& args) {
     MoeUnpack::set_unpack_log_level(ctx.log_level);
     packer.ztsd_compression(ctx.compression_level > 0, ctx.compression_level);
     packer.encryption(!ctx.encryption_key.empty(), ctx.encryption_key);
+
+    if (ctx.use_fixed_salt) {
+        if (ctx.fixed_salt_value.empty()) {
+            packer.use_fixed_salt(true);
+        } else {
+            packer.use_fixed_salt(true, ctx.fixed_salt_value);
+        }
+    }
 
     if (!has_error) {
         if (cmd_type == CMD_PACK) {

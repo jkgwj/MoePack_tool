@@ -53,6 +53,9 @@ struct PackParams
 	bool is_encryption = 0;                                                 // 是否加密
 	std::string encryption_key;                                                 // 加密密钥
 
+	bool use_fixed_salt = false;                                                 // 是否使用固定 salt（音频流式加密用，跨文件密钥可共享）
+	std::string fixed_salt_value;                                                // 自定义固定 salt（空=使用默认常量）
+
 	MOE_ImageFormat src_image_format=MOE_ImageFormat::RGBA8888;             // 源图像格式
 };
 
@@ -73,6 +76,8 @@ public:
 	//void set_3D_texture() { pack_params.is_2D = 0; }//暂时不支持3D纹理
 	void ztsd_compression(bool enable, int level);
 	void encryption(bool enable, const std::string key);
+	void use_fixed_salt(bool enable);
+	void use_fixed_salt(bool enable, const std::string& salt);
 	
 	
     /**

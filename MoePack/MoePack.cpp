@@ -15,8 +15,36 @@
  */
 #include "sodium.h"
 #include "MoePack.h"
+#include <cstring>
+#include <cstdio>
 
+// 默认固定 salt，所有音频流式加密文件共用
+// 使用固定 salt 配合唯一 stream_header 可保证安全，同时让运行时跨文件共享派生密钥
+static const unsigned char DEFAULT_FIXED_SALT[crypto_pwhash_SALTBYTES] = {
+    0x4D, 0x6F, 0x65, 0x41, 0x75, 0x64, 0x69, 0x6F,  // "MoeAudio"
+    0x53, 0x61, 0x6C, 0x74, 0x56, 0x31, 0x2E, 0x30   // "SaltV1.0"
+};
 
+// 将用户输入的 salt 字符串规范化为 16 字节
+// - 空字符串: 使用默认固定 salt
+// - 长度 < 16: 右侧补 0x00 到 16 字节
+// - 长度 == 16: 直接使用
+// - 长度 > 16: 报错
+static bool normalize_salt(const std::string& input, unsigned char out[crypto_pwhash_SALTBYTES]) {
+    if (input.empty()) {
+        memcpy(out, DEFAULT_FIXED_SALT, crypto_pwhash_SALTBYTES);
+        return true;
+    }
+    if (input.size() > crypto_pwhash_SALTBYTES) {
+        std::cerr << "错误: salt 长度超过 " << crypto_pwhash_SALTBYTES
+                  << " 字节 (" << input.size() << " > " << crypto_pwhash_SALTBYTES << ")"
+                  << std::endl;
+        return false;
+    }
+    memset(out, 0, crypto_pwhash_SALTBYTES);
+    memcpy(out, input.data(), input.size());
+    return true;
+}
 
 MoePack::MoePack()
 {
@@ -34,6 +62,16 @@ void MoePack::encryption(bool enable, const std::string key)
 {
     pack_params.is_encryption = enable;
     pack_params.encryption_key = key;
+}
+void MoePack::use_fixed_salt(bool enable)
+{
+    pack_params.use_fixed_salt = enable;
+    pack_params.fixed_salt_value.clear();
+}
+void MoePack::use_fixed_salt(bool enable, const std::string& salt)
+{
+    pack_params.use_fixed_salt = enable;
+    pack_params.fixed_salt_value = salt;
 }
 
 UniquePtr_uChar MoePack::_load_image_to_src_format(const std::string& image_path, int& h, int& w) {
@@ -1138,7 +1176,18 @@ UniquePtr_uChar MoePack::_encrypt_stream(unsigned char* data, int size, std::str
     // Argon2id 密钥派生
     unsigned char crypto_key[crypto_secretstream_xchacha20poly1305_KEYBYTES];
     unsigned char salt[crypto_pwhash_SALTBYTES];
-    randombytes_buf(salt, sizeof(salt));
+    if (pack_params.use_fixed_salt) {
+        if (!normalize_salt(pack_params.fixed_salt_value, salt)) {
+            throw std::runtime_error("分块加密失败：固定 salt 无效");
+        }
+        if (log_level >= 1) {
+            std::cout << "  使用固定 salt: ";
+            for (int i = 0; i < (int)sizeof(salt); i++) printf("%02x", salt[i]);
+            std::cout << std::endl;
+        }
+    } else {
+        randombytes_buf(salt, sizeof(salt));
+    }
 
     int ret = crypto_pwhash(
         crypto_key, sizeof(crypto_key),
