@@ -20,7 +20,6 @@
 
 static const size_t CHUNK_ABYTES = crypto_secretstream_xchacha20poly1305_ABYTES;
 
-// 从 .moe 文件头读取 salt 并派生密钥，不初始化解密流
 bool MoeSharedStreamReader::derive_key(const char* file_path, const char* password,
                                         unsigned char derived_key_out[32]) {
     if (sodium_init() == -1) return false;
@@ -28,28 +27,23 @@ bool MoeSharedStreamReader::derive_key(const char* file_path, const char* passwo
     std::ifstream file(file_path, std::ios::binary);
     if (!file) return false;
 
-    // 跳过 MoeHeader
     file.seekg(sizeof(MoeHeader));
     if (!file) return false;
 
-    // 跳过 stream_header (24 bytes)
     file.seekg(crypto_secretstream_xchacha20poly1305_HEADERBYTES, std::ios::cur);
     if (!file) return false;
 
-    // 读取 salt (16 bytes)
     unsigned char salt[crypto_pwhash_SALTBYTES];
     file.read(reinterpret_cast<char*>(salt), sizeof(salt));
     if (!file || file.gcount() != sizeof(salt)) return false;
 
-    // Argon2id 派生密钥
     int ret = crypto_pwhash(
         derived_key_out, crypto_secretstream_xchacha20poly1305_KEYBYTES,
         password, strlen(password),
         salt,
         crypto_pwhash_OPSLIMIT_INTERACTIVE,
         crypto_pwhash_MEMLIMIT_INTERACTIVE,
-        crypto_pwhash_ALG_DEFAULT
-    );
+        crypto_pwhash_ALG_DEFAULT);
 
     if (ret != 0) {
         sodium_memzero(derived_key_out, crypto_secretstream_xchacha20poly1305_KEYBYTES);
@@ -78,7 +72,6 @@ bool MoeSharedStreamReader::open(const char* file_path,
         return false;
     }
 
-    // 读 MoeHeader
     file_.read(reinterpret_cast<char*>(&header_), sizeof(MoeHeader));
     if (!file_ || file_.gcount() != sizeof(MoeHeader)) {
         error_ = Error::HeaderParseFailed;
@@ -101,7 +94,6 @@ bool MoeSharedStreamReader::open(const char* file_path,
         return false;
     }
 
-    // 空文件
     if (header_.original_size == 0 && header_.chunk_count == 0) {
         current_chunk_ = 0;
         current_byte_pos_ = 0;
@@ -114,7 +106,6 @@ bool MoeSharedStreamReader::open(const char* file_path,
         return false;
     }
 
-    // 读取 stream_header 和 salt，缓存用于 seek 回退
     file_.read(reinterpret_cast<char*>(saved_stream_header_), sizeof(saved_stream_header_));
     if (!file_ || file_.gcount() != sizeof(saved_stream_header_)) {
         error_ = Error::HeaderParseFailed;
@@ -127,10 +118,8 @@ bool MoeSharedStreamReader::open(const char* file_path,
         return false;
     }
 
-    // 拷贝外部派生密钥，跳过 Argon2id
     memcpy(derived_key_, derived_key, sizeof(derived_key_));
 
-    // 直接用外部密钥初始化 stream cipher state
     int ret = crypto_secretstream_xchacha20poly1305_init_pull(
         &state_, saved_stream_header_, derived_key_);
     if (ret != 0) {
@@ -140,7 +129,6 @@ bool MoeSharedStreamReader::open(const char* file_path,
     }
     state_initialized_ = true;
 
-    // 初始化 SHA-256，将 stream_header 和 salt 计入哈希
     crypto_hash_sha256_init(&hash_state_);
     crypto_hash_sha256_update(&hash_state_, saved_stream_header_, sizeof(saved_stream_header_));
     crypto_hash_sha256_update(&hash_state_, saved_salt_, sizeof(saved_salt_));
@@ -242,7 +230,6 @@ bool MoeSharedStreamReader::_reinit_crypto_state() {
         state_initialized_ = false;
     }
 
-    // 复用缓存的 derived_key_，不重跑 Argon2
     int ret = crypto_secretstream_xchacha20poly1305_init_pull(
         &state_, saved_stream_header_, derived_key_);
     if (ret != 0) {

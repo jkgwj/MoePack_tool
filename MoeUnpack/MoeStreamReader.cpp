@@ -20,7 +20,7 @@
 
 static const size_t CHUNK_ABYTES = crypto_secretstream_xchacha20poly1305_ABYTES;
 
-int MoeStreamReader::detect_version(const char* file_path) {
+int MoeStreamReader::is_valid_moe(const char* file_path) {
     std::ifstream f(file_path, std::ios::binary);
     if (!f) return -1;
 
@@ -30,7 +30,7 @@ int MoeStreamReader::detect_version(const char* file_path) {
     f.read(version, 8);
 
     if (!f || memcmp(magic, "MOE", 3) != 0) return -1;
-    if (memcmp(version, MOE_PackVersion, 8) == 0) return 2;
+    if (memcmp(version, MOE_PackVersion, 8) == 0) return 1;
     return -1;
 }
 
@@ -77,7 +77,6 @@ bool MoeStreamReader::open(const char* file_path, const char* password) {
         return false;
     }
 
-    // 空文件
     if (header_.original_size == 0 && header_.chunk_count == 0) {
         current_chunk_ = 0;
         current_byte_pos_ = 0;
@@ -90,7 +89,6 @@ bool MoeStreamReader::open(const char* file_path, const char* password) {
         return false;
     }
 
-    // 读取 stream_header 和 salt, 缓存用于 seek 回退
     file_.read(reinterpret_cast<char*>(saved_stream_header_), sizeof(saved_stream_header_));
     if (!file_ || file_.gcount() != sizeof(saved_stream_header_)) {
         error_ = Error::HeaderParseFailed;
@@ -103,14 +101,12 @@ bool MoeStreamReader::open(const char* file_path, const char* password) {
         return false;
     }
 
-    // 记录密文数据起始偏移
     data_start_offset_ = file_.tellg();
 
     if (!_derive_key_and_init(saved_stream_header_, saved_salt_)) {
         return false;
     }
 
-    // 初始化 SHA-256, 将 stream_header 和 salt 计入哈希
     crypto_hash_sha256_init(&hash_state_);
     crypto_hash_sha256_update(&hash_state_, saved_stream_header_, sizeof(saved_stream_header_));
     crypto_hash_sha256_update(&hash_state_, saved_salt_, sizeof(saved_salt_));
@@ -133,8 +129,7 @@ bool MoeStreamReader::_derive_key_and_init(const unsigned char* stream_header,
         salt,
         crypto_pwhash_OPSLIMIT_INTERACTIVE,
         crypto_pwhash_MEMLIMIT_INTERACTIVE,
-        crypto_pwhash_ALG_DEFAULT
-    );
+        crypto_pwhash_ALG_DEFAULT);
     if (ret != 0) {
         sodium_memzero(derived_key_, sizeof(derived_key_));
         error_ = Error::KeyDerivationFailed;
@@ -259,7 +254,6 @@ bool MoeStreamReader::_reinit_crypto_state() {
         state_initialized_ = false;
     }
 
-    // 复用 open 时缓存的 derived_key_，不重跑 Argon2
     int ret = crypto_secretstream_xchacha20poly1305_init_pull(
         &state_, saved_stream_header_, derived_key_);
     if (ret != 0) {
@@ -347,7 +341,7 @@ bool MoeStreamReader::open_with_cached_key(const char* file_path,
     }
 
     file_path_ = file_path;
-    password_  = "";  // 不需要明文密码了
+    password_  = "";
 
     if (sodium_init() == -1) {
         error_ = Error::KeyDerivationFailed;
@@ -394,16 +388,13 @@ bool MoeStreamReader::open_with_cached_key(const char* file_path,
         return false;
     }
 
-    // 复制缓存的密钥材料
     memcpy(derived_key_, km.derived_key, sizeof(derived_key_));
     memcpy(saved_stream_header_, km.stream_header, sizeof(saved_stream_header_));
     memcpy(saved_salt_, km.salt, sizeof(saved_salt_));
     data_start_offset_ = km.data_start_offset;
 
-    // 跳到密文数据起始位置
     file_.seekg(data_start_offset_);
 
-    // 直接用缓存密钥初始化 stream cipher state，跳过 crypto_pwhash
     int ret = crypto_secretstream_xchacha20poly1305_init_pull(
         &state_, saved_stream_header_, derived_key_);
     if (ret != 0) {
@@ -413,7 +404,6 @@ bool MoeStreamReader::open_with_cached_key(const char* file_path,
     }
     state_initialized_ = true;
 
-    // 初始化 SHA-256 增量校验
     crypto_hash_sha256_init(&hash_state_);
     crypto_hash_sha256_update(&hash_state_, saved_stream_header_, sizeof(saved_stream_header_));
     crypto_hash_sha256_update(&hash_state_, saved_salt_, sizeof(saved_salt_));
