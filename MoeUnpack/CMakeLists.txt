@@ -6,6 +6,7 @@ endif()
 
 target_include_directories(MoeUnpack
     PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}
+    PRIVATE ${CMAKE_SOURCE_DIR}/libs/stb
 )
 
 target_link_libraries(MoeUnpack
@@ -15,13 +16,3 @@ target_link_libraries(MoeUnpack
      zstd::libzstd
      unofficial-sodium::sodium
 )
-
-option(MOE_UNPACK_DEBUG ON)
-if(MOE_UNPACK_DEBUG)
-    target_compile_definitions(MoeUnpack
-    PRIVATE
-    ktx
-    zstd
-    unofficial-sodium
-    )
-endif()

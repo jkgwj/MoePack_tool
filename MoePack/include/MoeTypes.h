@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 #pragma once
+#include "MoeHeader.h"
 
 /**
  * @brief 目标平台枚举
@@ -26,16 +27,4 @@ enum MOE_Platform {
     IOS,        ///< iOS 平台 (ASTC 6x6)
     ANDROID,    ///< Android 平台 (ETC2)
     NOP         ///< 未指定平台
-};
-
-/**
- * @brief 源图像像素格式枚举
- * @note 用于指定 stb_image 解码后的像素格式
- */
-enum MOE_ImageFormat {
-    RGB888 = 0,     ///< RGB 无透明通道 (8bit × 3)
-    RGBA8888,       ///< RGBA 8位四通道 (8bit × 4)
-    L8,             ///< 单通道 8 位灰度
-    LA88,           ///< 8 位灰度 + 8 位 Alpha
-    RGBA32F         ///< RGBA 32 位浮点数
 };

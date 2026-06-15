@@ -19,11 +19,6 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 
-# ========== MoePack 编译选项 ==========
-option(MOE_BUILD_STATIC "构建为静态库（默认ON），OFF则构建动态库" ON)
-option(MOE_BUILD_PACK "是否编译封包库和封包工具（默认OFF，仅编译解包库）" ON)
-
-
 # 设置输出目录
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/bin/$<CONFIG>)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/bin/$<CONFIG>)

@@ -15,8 +15,6 @@
  */
 #pragma once
 #include "MoePack.h"
-#define MOE_UNPACK_IMPLEMENTATION
-#define MOE_UNPACK_CHECK_DATA
 #include "MoeUnpack.h"
 #include <map>
 #include <sstream>
@@ -44,8 +42,8 @@ enum CmdType {
     CMD_NONE = -1,          ///< 无命令
     CMD_UNPACK = 0,         ///< 图片解包 (unpack)
     CMD_PACK = 1,           ///< 图片封包 (pack)
-    CMD_PACK_EX = 2,        ///< 非图片封包 (pack_ex)
-    CMD_UNPACK_EX = 3,      ///< 非图片解包 (unpack_ex)
+    CMD_PACK_EX = 2,        ///< 通用封包 (pack_ex)
+    CMD_UNPACK_EX = 3,      ///< 通用解包 (unpack_ex)
     CMD_PACK_EX_STREAM = 4  ///< 流式加密封包 (pack_ex_stream)
 };
 

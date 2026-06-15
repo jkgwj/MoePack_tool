@@ -171,6 +171,18 @@ enum class MOE_Pack_AudioFormat : uint32_t {
 };
 
 /**
+ * @brief 源图像像素格式枚举
+ * @note 用于指定 stb_image 解码后的像素格式，原在 MoeTypes.h，移至此处供 MoeUnpack 共享
+ */
+enum MOE_ImageFormat {
+    RGB888 = 0,     ///< RGB 无透明通道 (8bit × 3)
+    RGBA8888,       ///< RGBA 8位四通道 (8bit × 4)
+    L8,             ///< 单通道 8 位灰度
+    LA88,           ///< 8 位灰度 + 8 位 Alpha
+    RGBA32F         ///< RGBA 32 位浮点数
+};
+
+/**
  * @brief 通过文件头魔数检测音频格式
  * @param data 文件头部数据指针（至少 12 字节）
  * @param size 数据大小

@@ -77,7 +77,7 @@ static inline ktx_transcode_fmt_e VkFormatToKtxTranscodeFmt(VkFormat vkFmt) {
 
 /**
  * @brief 打包参数结构体
- * @note 控制图片/文件打包过程中的所有选项
+ * @note 控制打包过程中的所有选项
  */
 struct PackParams {
     VkFormat texture_format;            ///< GPU 压缩目标格式（如 BC7_RGBA_UNORM），由目标平台自动设置
@@ -103,7 +103,7 @@ struct PackParams {
  *
  * 核心功能：
  * - pack()：图片文件 → stb_image 解码 → KTX2 GPU 压缩 → (ZSTD) → (加密) → .moe
- * - pack_ex()：任意文件 → (ZSTD) → (加密) → .moe
+ * - pack_ex()：任意文件（含图片，不做纹理压缩）→ (ZSTD) → (加密) → .moe
  * - pack_ex_stream()：任意文件 → 分块加密(Chacha20-Poly1305) → .moe
  */
 class MoePack {
@@ -168,10 +168,10 @@ public:
     std::string pack(std::string in_path, const std::string out_path);
 
     /**
-     * @brief 非图片资源封包：直接对原始文件进行加密/压缩并添加 MOE 文件头
+     * @brief 通用资源封包：直接对原始文件进行加密/压缩并添加 MOE 文件头（支持任意格式，包括图片）
      *
      * 核心流程：读取原始文件 → (ZSTD压缩) → (加密) → 添加文件头 → 写入 .moe
-     * 与 pack() 的区别：不做图像解码和 KTX2 纹理转换，适用于 MP3/FLAC/OGG 等任意二进制文件
+     * 与 pack() 的区别：不做图像解码和 KTX2 纹理转换，保持原始文件数据不变
      *
      * @param in_path 输入文件路径（支持任意二进制文件，也支持文件夹批量处理）
      * @param out_path 输出打包文件路径

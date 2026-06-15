@@ -26,8 +26,8 @@ MoePack 打包工具 - 中文帮助
   pack            - 图片资源封包：解码图片→KTX2 GPU纹理压缩→ZSTD压缩(可选)→加密(可选)
                     适用场景：纹理/贴图等图像资源，会根据目标平台自动选择最优GPU压缩格式
                     需要 -p 指定目标平台
-  pack_ex         - 非图片资源封包：直接读取原始文件→ZSTD压缩(可选)→加密(可选)
-                    适用场景：音频(MP3/FLAC/OGG)、视频、文本等任意二进制文件
+  pack_ex         - 通用资源封包：直接读取原始文件→ZSTD压缩(可选)→加密(可选)
+                    适用场景：任意二进制文件（含图片，不做纹理压缩，保持原始数据不变）
                     不进行任何解码/转码，只做压缩+加密+添加MOE文件头
                     无需 -p 参数
   pack_ex_stream  - 流式加密封包：读取原始文件→分块加密(无压缩)→输出.moe
@@ -37,8 +37,8 @@ MoePack 打包工具 - 中文帮助
                     无需 -p、-z 参数(不支持压缩)
   unpack          - 图片资源解包：解密(可选)→解压(可选)→KTX2格式验证→输出.ktx2文件
                     适用场景：解包由 pack 命令生成的 .moe 文件
-  unpack_ex       - 非图片资源解包：解密(可选)→解压(可选)→输出原始文件(无扩展名)
-                    适用场景：解包由 pack_ex 命令生成的 .moe 文件
+  unpack_ex       - 通用资源解包：解密(可选)→解压(可选)→输出原始文件(无扩展名)
+                    适用场景：解包由 pack_ex 命令生成的 .moe 文件（含图片原始数据）
                     不进行KTX2验证，直接还原原始二进制数据
 
 【参数说明】
@@ -59,6 +59,7 @@ MoePack 打包工具 - 中文帮助
 【示例】
   pack            -i D:\textures -p WINDOWS -o D:\output -z 17 -k mykey -l 2
   pack_ex         -i D:\audio\bgm.mp3 -o D:\output -k mykey
+  pack_ex         -i D:\images\photo.png -o D:\output -k mykey  (图片原始封包，不转纹理)
   pack_ex_stream  -i D:\audio\bgm.mp3 -o D:\output -k mykey -s 131072 -fs
   unpack          -i D:\output\texture.moe -o D:\unpacked -k mykey
   unpack_ex       -i D:\output\bgm.moe -o D:\unpacked -k mykey
@@ -72,7 +73,7 @@ MoePack Pack Tool - English Help
                     Use case: textures/sprites, auto-selects optimal GPU format per platform
                     Requires -p for target platform
   pack_ex         - Generic resource packing: raw file→ZSTD(opt)→encrypt(opt)
-                    Use case: audio(MP3/FLAC/OGG), video, text, any binary files
+                    Use case: any binary files (including images, no texture compression)
                     NO decoding/transcoding, only compression+encryption+MOE header
                     No -p required
   pack_ex_stream  - Streaming encryption pack: raw file→chunked encrypt(no compress)→.moe
@@ -83,7 +84,7 @@ MoePack Pack Tool - English Help
   unpack          - Image resource unpacking: decrypt(opt)→decompress(opt)→KTX2 validate→.ktx2
                     Use case: unpack .moe files created by the pack command
   unpack_ex       - Generic resource unpacking: decrypt(opt)→decompress(opt)→raw file (no ext)
-                    Use case: unpack .moe files created by the pack_ex command
+                    Use case: unpack .moe files created by the pack_ex command (any format)
                     No KTX2 validation, restores original binary data directly
 
 [Options]
@@ -104,6 +105,7 @@ MoePack Pack Tool - English Help
 [Examples]
   pack            -i D:\textures -p WINDOWS -o D:\output -z 17 -k mykey -l 2
   pack_ex         -i D:\audio\bgm.mp3 -o D:\output -k mykey
+  pack_ex         -i D:\images\photo.png -o D:\output -k mykey  (raw image pack, no texture compression)
   pack_ex_stream  -i D:\audio\bgm.mp3 -o D:\output -k mykey -s 131072 -fs
   unpack          -i D:\output\texture.moe -o D:\unpacked -k mykey
   unpack_ex       -i D:\output\bgm.moe -o D:\unpacked -k mykey
