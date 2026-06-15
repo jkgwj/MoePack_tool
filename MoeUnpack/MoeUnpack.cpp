@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Copyright 2026 jkgwj
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -26,10 +26,6 @@
 #ifdef MOE_UNPACK_CHECK_DATA
 #include "ktx.h"
 #endif
-
-#define STB_IMAGE_IMPLEMENTATION
-#define STB_IMAGE_STATIC
-#include "stb_image.h"
 
 namespace fs = std::filesystem;
 
@@ -614,43 +610,6 @@ unsigned char* unpack_ex(std::string in_put, int& size, std::string _key) {
     _UnpackResult result = _unpack_process_file(in_put, _key);
     size = result.size;
     return result.data.release();
-}
-
-DecodedImage unpack_ex_decode(std::string in_put, std::string _key,
-                               MOE_ImageFormat desired_format) {
-    _UnpackResult result = _unpack_process_file(in_put, _key);
-
-    int desired_channels = 0;
-    switch (desired_format) {
-    case MOE_ImageFormat::RGBA8888: desired_channels = 4; break;
-    case MOE_ImageFormat::RGB888:   desired_channels = 3; break;
-    case MOE_ImageFormat::L8:       desired_channels = 1; break;
-    case MOE_ImageFormat::LA88:     desired_channels = 2; break;
-    default:
-        throw std::runtime_error("unpack_ex_decode: 不支持的输出格式");
-    }
-
-    int w = 0, h = 0, ch = 0;
-    unsigned char* pixels = stbi_load_from_memory(
-        result.data.get(), result.size, &w, &h, &ch, desired_channels);
-
-    if (!pixels) {
-        throw std::runtime_error(std::string("图片解码失败: ") + stbi_failure_reason());
-    }
-
-    DecodedImage img;
-    img.pixel_data = UniquePtr_uChar(pixels);
-    img.width      = w;
-    img.height     = h;
-    img.channels   = ch;
-    img.format     = desired_format;
-
-    if (unpack_log_level >= 1) {
-        printf("图片解包解码完成: %dx%d, %d通道(原始) → %d通道(输出), %d字节\n",
-               w, h, ch, desired_channels, w * h * desired_channels);
-    }
-
-    return img;
 }
 
 } // namespace MoeUnpack

@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Copyright 2026 jkgwj
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -168,18 +168,6 @@ enum class MOE_Pack_AudioFormat : uint32_t {
     FLAC    = 2,    ///< FLAC 无损压缩格式
     MP3     = 3,    ///< MPEG Audio Layer 3
     VORBIS  = 4     ///< Ogg Vorbis 格式
-};
-
-/**
- * @brief 源图像像素格式枚举
- * @note 用于指定 stb_image 解码后的像素格式，原在 MoeTypes.h，移至此处供 MoeUnpack 共享
- */
-enum MOE_ImageFormat {
-    RGB888 = 0,     ///< RGB 无透明通道 (8bit × 3)
-    RGBA8888,       ///< RGBA 8位四通道 (8bit × 4)
-    L8,             ///< 单通道 8 位灰度
-    LA88,           ///< 8 位灰度 + 8 位 Alpha
-    RGBA32F         ///< RGBA 32 位浮点数
 };
 
 /**

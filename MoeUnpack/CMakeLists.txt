@@ -11,7 +11,6 @@ target_include_directories(MoeUnpack
 
 target_link_libraries(MoeUnpack
     PRIVATE
-    moe_pack_includes
     PUBLIC
      moe_pack_compile_options
      zstd::libzstd

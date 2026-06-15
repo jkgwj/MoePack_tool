@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Copyright 2026 jkgwj
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -139,28 +139,5 @@ namespace MoeUnpack {
      */
     unsigned char* unpack_ex(std::string in_put, int& size, std::string _key = "");
 
-    /**
-     * @brief 图片解包解码结果
-     */
-    struct DecodedImage {
-        UniquePtr_uChar pixel_data;      ///< 解码后的像素数据
-        int             width    = 0;    ///< 图片宽度
-        int             height   = 0;    ///< 图片高度
-        int             channels = 0;    ///< 原始文件通道数
-        MOE_ImageFormat format;          ///< 输出像素格式
-    };
 
-    /**
-     * @brief 解包并解码图片为像素数据
-     *
-     * 核心流程：文件读取→校验→解密→解压→stb_image解码→返回像素
-     *
-     * @param in_put 输入 .moe 文件路径
-     * @param _key 解密密钥（未加密可为空）
-     * @param desired_format 期望的输出像素格式，默认 RGBA8888
-     * @return DecodedImage 解码后的像素数据及尺寸信息
-     * @throw std::runtime_error 解密/解压/解码失败时抛出异常
-     */
-    DecodedImage unpack_ex_decode(std::string in_put, std::string _key = "",
-                                   MOE_ImageFormat desired_format = MOE_ImageFormat::RGBA8888);
 }
