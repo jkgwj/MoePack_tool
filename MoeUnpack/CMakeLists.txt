@@ -1,4 +1,4 @@
-if(MOE_BUILD_STATIC)
+﻿if(MOE_BUILD_STATIC)
     add_library(MoeUnpack STATIC "MoeUnpack.cpp" "MoeStreamReader.cpp" "MoeSharedStreamReader.cpp")
 else()
     add_library(MoeUnpack SHARED "MoeUnpack.cpp" "MoeStreamReader.cpp" "MoeSharedStreamReader.cpp")
@@ -11,6 +11,7 @@ target_include_directories(MoeUnpack
 
 target_link_libraries(MoeUnpack
     PRIVATE
+    moe_pack_includes
     PUBLIC
      moe_pack_compile_options
      zstd::libzstd
