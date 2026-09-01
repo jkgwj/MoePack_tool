@@ -612,4 +612,107 @@ unsigned char* unpack_ex(std::string in_put, int& size, std::string _key) {
     return result.data.release();
 }
 
+_UnpackResult _unpack_process_memory(const unsigned char* moe_data, int moe_size,
+                                      const std::string& _key) {
+    _UnpackResult result;
+
+    if (moe_data == nullptr) {
+        throw std::runtime_error("解包失败：输入数据指针为空");
+    }
+    if (moe_size <= 0) {
+        throw std::runtime_error("解包失败：输入数据大小无效 [" + std::to_string(moe_size) + "]");
+    }
+    if (static_cast<size_t>(moe_size) < sizeof(MoeHeader)) {
+        throw std::runtime_error(
+            "解包失败：数据太小（" + std::to_string(moe_size) + " 字节），不是有效的 MOE 格式（至少需 "
+            + std::to_string(sizeof(MoeHeader)) + " 字节头部）");
+    }
+
+    if (unpack_log_level >= 1) {
+        printf("开始解包内存数据: 总大小 %d 字节\n", moe_size);
+    }
+
+    // 1) 解析头部（从 const buffer 拷贝到栈上结构体）
+    MoeHeader moe_header;
+    memcpy(&moe_header, moe_data, sizeof(MoeHeader));
+
+    try {
+        unpack_moe_header(reinterpret_cast<unsigned char*>(&moe_header), moe_header);
+    } catch (const std::exception& e) {
+        throw std::runtime_error(std::string("解包失败：头部解析错误 - ") + e.what());
+    }
+
+    result.was_encrypted = moe_header.encrypted_on;
+    result.was_compressed = moe_header.ztsd_on;
+
+    if (unpack_log_level >= 2) {
+        printf("头部解析成功：\n");
+        printf("  原始大小: %u 字节\n", moe_header.original_size);
+        printf("  压缩标志: %s\n", moe_header.ztsd_on ? "启用" : "禁用");
+        printf("  加密标志: %s\n", moe_header.encrypted_on ? "启用" : "禁用");
+        printf("  分块模式: %s\n", moe_header.chunk_count > 0 ? "启用" : "禁用");
+    }
+
+    // 2) 拷贝数据段到 mutable 副本（解密/解压需要可写内存，不修改调用方原 buffer）
+    size_t data_size = static_cast<size_t>(moe_size) - sizeof(MoeHeader);
+    if (data_size == 0) {
+        throw std::runtime_error("解包失败：数据大小为0");
+    }
+
+    unsigned char* raw_data = static_cast<unsigned char*>(malloc(data_size));
+    if (!raw_data) {
+        throw std::runtime_error("解包失败：分配数据内存失败");
+    }
+    memcpy(raw_data, moe_data + sizeof(MoeHeader), data_size);
+    result.data = UniquePtr_uChar(raw_data);
+    result.size = static_cast<int>(data_size);
+
+    // 3) SHA-256 校验 + 解密（分块模式由 header.chunk_count 自动判定）
+    if (result.was_encrypted) {
+        if (_key.empty()) {
+            throw std::runtime_error("文件已加密但未提供解密密钥");
+        }
+        if (!_verify_data_integrity(result.data.get(), result.size,
+                                    moe_header.check_data)) {
+            throw std::runtime_error("数据完整性校验未通过");
+        }
+        if (moe_header.chunk_count > 0) {
+            result.data = _decrypt_chunked(result.data.get(), result.size,
+                                            moe_header, _key);
+        } else {
+            result.data = _decrypt(result.data.get(), result.size, _key);
+        }
+    } else {
+        if (!_verify_data_integrity(result.data.get(), result.size,
+                                    moe_header.check_data)) {
+            throw std::runtime_error("数据完整性校验未通过");
+        }
+    }
+
+    // 4) ZSTD 解压
+    if (result.was_compressed) {
+        result.data = _ztsd_decompression(result.data.get(), result.size);
+    }
+
+    if (unpack_log_level >= 1) {
+        printf("数据处理完成，最终大小: %d 字节\n", result.size);
+    }
+
+    return result;
+}
+
+unsigned char* unpack_memory(const unsigned char* moe_data, int moe_size,
+                              int& size, std::string _key) {
+    _UnpackResult result = _unpack_process_memory(moe_data, moe_size, _key);
+    size = result.size;
+    return result.data.release();
+}
+
+unsigned char* unpack_ex_memory(const unsigned char* moe_data, int moe_size,
+                                 int& size, std::string _key) {
+    _UnpackResult result = _unpack_process_memory(moe_data, moe_size, _key);
+    size = result.size;
+    return result.data.release();
+}
+
 } // namespace MoeUnpack

@@ -99,6 +99,21 @@ namespace MoeUnpack {
     _UnpackResult _unpack_process_file(const std::string& in_put, const std::string& _key);
 
     /**
+     * @brief 内部函数：从内存 .moe 数据完成 读取→校验→解密→解压 全流程
+     *
+     * 与 _unpack_process_file 等价，但数据来源于内存而非文件
+     * 内部会 malloc 一份 mutable 副本供解密/解压使用（输入 moe_data 不会被修改）
+     *
+     * @param moe_data 输入 .moe 数据指针（须包含完整 98 字节头部）
+     * @param moe_size 输入 .moe 数据大小（字节）
+     * @param _key 解密密钥（未加密可为空）
+     * @return _UnpackResult 处理后的数据及元信息
+     * @throw std::runtime_error 数据指针为空/大小不足/格式无效/解密失败/解压失败时抛出异常
+     */
+    _UnpackResult _unpack_process_memory(const unsigned char* moe_data, int moe_size,
+                                          const std::string& _key);
+
+    /**
      * @brief 图片资源解包：解密→解压→KTX2 验证→输出 .ktx2 文件
      * @param in_put 输入 .moe 文件路径
      * @param out_put 输出路径（目录或文件路径）
@@ -116,6 +131,22 @@ namespace MoeUnpack {
      * @return unsigned char* 解包后数据指针（调用者需 free 释放）
      */
     unsigned char* unpack(std::string in_put, int& size, std::string _key = "");
+
+    /**
+     * @brief 图片资源解包（纯内存版本）：从内存中的 .moe 数据返回解密解压后的 KTX2 数据
+     *
+     * 与 unpack(in_path, size, _key) 的区别：输入也是内存，常用于
+     * 已将 .moe 加载到内存（网络下载 / 内存映射 / 自定义 I/O）后的解包
+     *
+     * @param moe_data 输入 .moe 数据指针（须包含完整 98 字节头部）
+     * @param moe_size 输入 .moe 数据大小（字节）
+     * @param size [输出] 解包后数据大小
+     * @param _key 解密密钥（未加密可为空）
+     * @return unsigned char* 解包后 KTX2 数据指针（调用者需 free 释放）
+     * @throw std::runtime_error 数据指针为空/大小不足/格式无效/解密失败/解压失败时抛出异常
+     */
+    unsigned char* unpack_memory(const unsigned char* moe_data, int moe_size,
+                                  int& size, std::string _key = "");
 
     /**
      * @brief 非图片资源解包：解密→解压→输出原始文件（不做 KTX2 验证）
@@ -138,6 +169,21 @@ namespace MoeUnpack {
      * @return unsigned char* 解包后数据指针（调用者需 free 释放）
      */
     unsigned char* unpack_ex(std::string in_put, int& size, std::string _key = "");
+
+    /**
+     * @brief 非图片资源解包（纯内存版本）：从内存中的 .moe 数据返回原始数据
+     *
+     * 与 unpack_ex(in_path, size, _key) 的区别：输入也是内存
+     *
+     * @param moe_data 输入 .moe 数据指针（须包含完整 98 字节头部）
+     * @param moe_size 输入 .moe 数据大小（字节）
+     * @param size [输出] 解包后数据大小
+     * @param _key 解密密钥（未加密可为空）
+     * @return unsigned char* 解包后原始数据指针（调用者需 free 释放）
+     * @throw std::runtime_error 数据指针为空/大小不足/格式无效/解密失败/解压失败时抛出异常
+     */
+    unsigned char* unpack_ex_memory(const unsigned char* moe_data, int moe_size,
+                                     int& size, std::string _key = "");
 
 
 }
